@@ -11,13 +11,33 @@ android {
         applicationId = "dev.giorgi.silk"
         minSdk = 31
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1-phase1"
+        versionCode = 2
+        versionName = "0.2-phase1"
+    }
+
+    // One fixed key, kept in the repo, so every CI build can be installed as an
+    // update over the previous one. Fine for a personal sideloaded app;
+    // never reuse this key for anything published.
+    signingConfigs {
+        create("silk") {
+            storeFile = file("silk.keystore")
+            storePassword = "silkpass"
+            keyAlias = "silk"
+            keyPassword = "silkpass"
+        }
     }
 
     buildTypes {
+        // Release = not debuggable + R8-optimized. Debuggable apps run much
+        // slower on ART, so release is what goes on the phone.
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
+            signingConfig = signingConfigs.getByName("silk")
+        }
+        debug {
+            signingConfig = signingConfigs.getByName("silk")
         }
     }
 

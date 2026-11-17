@@ -3,79 +3,93 @@ package dev.giorgi.silk
 import android.app.ActivityOptions
 import android.content.ComponentName
 import android.content.Context
+import android.content.pm.LauncherActivityInfo
 import android.content.pm.LauncherApps
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Rect
 import android.graphics.drawable.Drawable
 import android.os.Handler
 import android.os.Looper
 import android.os.Process
+import android.os.SystemClock
 import android.os.UserHandle
 import android.os.UserManager
+import android.util.Log
 import android.view.View
 import android.widget.Toast
+import org.json.JSONArray
+import org.json.JSONObject
+import java.io.File
 import java.text.Collator
+import java.util.concurrent.Callable
 import java.util.concurrent.Executors
+import java.util.concurrent.Future
 
-/** One launchable activity. [key] is what gets stored in the saved layout. */
+/**
+ * One launchable activity. [key] is what gets stored in the saved layout;
+ * [version] is the package's last update time, used to know when a cached icon is stale.
+ */
 class AppInfo(
     val component: ComponentName,
     val user: UserHandle,
+    val userSerial: Long,
     val label: String,
     val icon: Bitmap,
     val key: String,
+    val version: Long,
 )
 
 /**
  * Source of truth for "which apps exist".
  *
- * LauncherApps is the launcher-specific system service: unlike PackageManager
- * it also covers the work profile, gives badged icons, and tells us when
- * packages are installed, updated or removed.
- *
- * Everything slow (listing apps, rendering icons) runs on a background thread;
- * results are published on the main thread.
+ * Startup is two-step so the drawer is never empty:
+ *  1. Read the app list and icons cached on disk last time (fast PNG decode).
+ *  2. Ask LauncherApps for the real list; only apps that are new or updated
+ *     have their icons rendered again, on 4 threads in parallel.
  */
 class AppRepository(private val context: Context) {
 
     private val launcherApps = context.getSystemService(LauncherApps::class.java)
     private val userManager = context.getSystemService(UserManager::class.java)
     private val io = Executors.newSingleThreadExecutor()
+    private val iconPool = Executors.newFixedThreadPool(4)
     private val main = Handler(Looper.getMainLooper())
-    private val iconPx = (Dimens.ICON_DP * context.resources.displayMetrics.density).toInt()
+    private val iconPx = context.dp(Dimens.ICON_DP)
+    private val iconDir = File(context.filesDir, "icons").apply { mkdirs() }
+    private val indexFile = File(context.filesDir, "apps_index.json")
 
     var apps: List<AppInfo> = emptyList()
         private set
     private var byKey: Map<String, AppInfo> = emptyMap()
 
-    /** Called on the main thread whenever [apps] has been replaced. */
-    var onAppsChanged: (() -> Unit)? = null
+    /** Last list built on the io thread; only touched from [io]. */
+    private var lastLoaded: List<AppInfo> = emptyList()
 
-    /** Called on the main thread when a package is really uninstalled. */
+    @Volatile
+    private var reloadQueued = false
+
+    var onAppsChanged: (() -> Unit)? = null
     var onPackageRemoved: ((packageName: String, userSerial: Long) -> Unit)? = null
 
     private val callback = object : LauncherApps.Callback() {
         override fun onPackageRemoved(packageName: String, user: UserHandle) {
-            this@AppRepository.onPackageRemoved?.invoke(packageName, userManager.getSerialNumberForUser(user))
+            this@AppRepository.onPackageRemoved?.invoke(
+                packageName, userManager.getSerialNumberForUser(user)
+            )
             reload()
         }
 
         override fun onPackageAdded(packageName: String, user: UserHandle) = reload()
-
         override fun onPackageChanged(packageName: String, user: UserHandle) = reload()
-
-        override fun onPackagesAvailable(
-            packageNames: Array<String>, user: UserHandle, replacing: Boolean
-        ) = reload()
-
-        override fun onPackagesUnavailable(
-            packageNames: Array<String>, user: UserHandle, replacing: Boolean
-        ) = reload()
+        override fun onPackagesAvailable(p: Array<String>, user: UserHandle, r: Boolean) = reload()
+        override fun onPackagesUnavailable(p: Array<String>, user: UserHandle, r: Boolean) = reload()
     }
 
     fun start() {
         launcherApps.registerCallback(callback, main)
+        io.execute { loadFromCache() }
         reload()
     }
 
@@ -90,41 +104,132 @@ class AppRepository(private val context: Context) {
         return apps.firstOrNull { it.component.packageName == packageName && it.user == me }
     }
 
+    private fun publish(list: List<AppInfo>) {
+        val map = list.associateBy { it.key }
+        main.post {
+            apps = list
+            byKey = map
+            onAppsChanged?.invoke()
+        }
+    }
+
+    // ---- step 1: disk cache -------------------------------------------------
+
+    private fun loadFromCache() {
+        val t0 = SystemClock.uptimeMillis()
+        if (!indexFile.exists()) return
+        try {
+            val arr = JSONArray(indexFile.readText())
+            val result = ArrayList<AppInfo>(arr.length())
+            for (i in 0 until arr.length()) {
+                val o = arr.getJSONObject(i)
+                val serial = o.getLong("serial")
+                val user = userManager.getUserForSerialNumber(serial) ?: continue
+                val component = ComponentName.unflattenFromString(o.getString("component")) ?: continue
+                val key = o.getString("key")
+                val bitmap = BitmapFactory.decodeFile(iconFile(key).path) ?: continue
+                result += AppInfo(component, user, serial, o.getString("label"), bitmap, key, o.getLong("version"))
+            }
+            lastLoaded = result
+            publish(result)
+            Log.i(TAG, "cache: ${result.size} apps in ${SystemClock.uptimeMillis() - t0} ms")
+        } catch (e: Exception) {
+            Log.w(TAG, "icon cache unreadable, rebuilding", e)
+        }
+    }
+
+    // ---- step 2: real list ----------------------------------------------------
+
     fun reload() {
+        if (reloadQueued) return
+        reloadQueued = true
         io.execute {
-            val result = ArrayList<AppInfo>()
+            reloadQueued = false
+            val t0 = SystemClock.uptimeMillis()
+            val previous = lastLoaded.associateBy { it.key }
+            val futures = ArrayList<Future<AppInfo>>()
+            val fresh = HashSet<String>()
             try {
                 for (user in userManager.userProfiles) {
                     val serial = userManager.getSerialNumberForUser(user)
                     for (info in launcherApps.getActivityList(null, user)) {
                         val component = info.componentName
-                        result += AppInfo(
-                            component = component,
-                            user = user,
-                            label = info.label?.toString() ?: component.packageName,
-                            icon = render(info.getBadgedIcon(0)),
-                            key = component.flattenToString() + "#" + serial,
-                        )
+                        val key = component.flattenToString() + "#" + serial
+                        val label = info.label?.toString() ?: component.packageName
+                        val version = versionOf(info)
+                        val cached = previous[key]
+                        futures += if (cached != null && cached.version == version && cached.label == label) {
+                            iconPool.submit(Callable { cached })
+                        } else {
+                            fresh += key
+                            iconPool.submit(Callable {
+                                AppInfo(component, user, serial, label,
+                                    render(info.getBadgedIcon(0)), key, version)
+                            })
+                        }
                     }
                 }
             } catch (e: Exception) {
-                // A profile can disappear while we iterate; the next callback reloads.
+                Log.w(TAG, "profile changed while loading", e)
+            }
+            val result = ArrayList<AppInfo>(futures.size)
+            for (f in futures) {
+                try {
+                    result += f.get()
+                } catch (e: Exception) {
+                    // One broken icon must not take down the whole list.
+                }
             }
             val collator = Collator.getInstance()
             result.sortWith { a, b -> collator.compare(a.label, b.label) }
-            val map = result.associateBy { it.key }
-            main.post {
-                apps = result
-                byKey = map
-                onAppsChanged?.invoke()
+
+            val changed = fresh.isNotEmpty() || result.size != lastLoaded.size
+            lastLoaded = result
+            if (changed) publish(result)
+            Log.i(TAG, "reload: ${result.size} apps, ${fresh.size} icons rendered, " +
+                "${SystemClock.uptimeMillis() - t0} ms")
+            if (changed) writeCache(result, fresh)
+        }
+    }
+
+    private fun versionOf(info: LauncherActivityInfo): Long = try {
+        context.packageManager.getPackageInfo(info.componentName.packageName, 0).lastUpdateTime
+    } catch (e: Exception) {
+        info.firstInstallTime
+    }
+
+    private fun iconFile(key: String) =
+        File(iconDir, key.replace(Regex("[^A-Za-z0-9._-]"), "_") + ".png")
+
+    private fun writeCache(list: List<AppInfo>, fresh: Set<String>) {
+        try {
+            val arr = JSONArray()
+            val keep = HashSet<String>()
+            for (app in list) {
+                val file = iconFile(app.key)
+                keep += file.name
+                if (app.key in fresh || !file.exists()) {
+                    file.outputStream().use { app.icon.compress(Bitmap.CompressFormat.PNG, 100, it) }
+                }
+                arr.put(JSONObject()
+                    .put("key", app.key)
+                    .put("component", app.component.flattenToString())
+                    .put("serial", app.userSerial)
+                    .put("label", app.label)
+                    .put("version", app.version))
             }
+            iconDir.listFiles()?.forEach { if (it.name !in keep) it.delete() }
+            val tmp = File(indexFile.parentFile, indexFile.name + ".tmp")
+            tmp.writeText(arr.toString())
+            tmp.renameTo(indexFile)
+        } catch (e: Exception) {
+            Log.w(TAG, "could not write icon cache", e)
         }
     }
 
     /**
-     * Icons are drawn once into a bitmap. Adaptive icons are layered vector
-     * drawables and expensive to draw every frame; a bitmap is one texture
-     * the GPU can scale and move for free during animations.
+     * Icons are drawn once into a bitmap. Adaptive icons are layered drawables
+     * and expensive to draw every frame; a bitmap is one GPU texture.
      */
     private fun render(drawable: Drawable): Bitmap {
         val bitmap = Bitmap.createBitmap(iconPx, iconPx, Bitmap.Config.ARGB_8888)
@@ -138,8 +243,6 @@ class AppRepository(private val context: Context) {
         val loc = IntArray(2)
         source.getLocationOnScreen(loc)
         val bounds = Rect(loc[0], loc[1], loc[0] + source.width, loc[1] + source.height)
-        // The best open animation an unprivileged launcher is allowed to ask for:
-        // the new window is revealed growing out of the icon.
         val options = ActivityOptions
             .makeClipRevealAnimation(source, 0, 0, source.width, source.height)
             .toBundle()
@@ -156,5 +259,9 @@ class AppRepository(private val context: Context) {
         } catch (e: Exception) {
             Toast.makeText(context, "Can't open app info", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    companion object {
+        const val TAG = "Silk"
     }
 }

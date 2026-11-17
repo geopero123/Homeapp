@@ -1,10 +1,12 @@
 package dev.giorgi.silk
 
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
 import android.provider.Settings
+import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
@@ -123,6 +125,7 @@ class LauncherActivity : ComponentActivity() {
         drawer.onAppLongClick = { app, view -> showDrawerIconMenu(app, view) }
 
         root = LauncherRootLayout(this, home, drawer)
+        root.onSwipeDown = { expandNotifications() }
     }
 
     private fun onAppsChanged() {
@@ -265,6 +268,21 @@ class LauncherActivity : ComponentActivity() {
             startActivity(intent)
         } catch (e: Exception) {
             toast("Can't uninstall ${app.label}")
+        }
+    }
+
+    /**
+     * Opens the notification shade. StatusBarManager.expandNotificationsPanel()
+     * is hidden from the SDK but allowed for normal apps (with the
+     * EXPAND_STATUS_BAR permission), so it is called by reflection.
+     */
+    @SuppressLint("WrongConstant")
+    private fun expandNotifications() {
+        try {
+            val statusBar = getSystemService("statusbar") ?: return
+            statusBar.javaClass.getMethod("expandNotificationsPanel").invoke(statusBar)
+        } catch (e: Exception) {
+            Log.w(AppRepository.TAG, "could not open notifications", e)
         }
     }
 

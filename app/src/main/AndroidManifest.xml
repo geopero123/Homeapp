@@ -4,6 +4,9 @@
     <!-- Lets us fire the system "Uninstall?" dialog from the long-press menu. -->
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
 
+    <!-- Swipe down on the home screen opens the notification shade. -->
+    <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
+
     <!-- Android 11+ package visibility. LauncherApps already returns every
          launchable app; these entries are for resolving the default dialer,
          SMS, browser and camera apps when the dock is seeded on first run. -->

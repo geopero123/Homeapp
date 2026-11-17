@@ -14,15 +14,17 @@ import kotlin.math.abs
 
 /**
  * Holds the home screen and, on top of it, the app drawer, and owns the
- * swipe-up / swipe-down gesture between them.
+ * vertical gestures:
+ *   swipe up on home      -> drawer follows the finger, spring settles it
+ *   swipe down on home    -> notification shade (One UI default)
+ *   swipe down in drawer  -> drawer follows the finger back down
  *
  * The drawer's translationY is the single source of truth:
- *   translationY == height  -> closed (drawer parked below the screen)
- *   translationY == 0       -> open
- * While a finger is down we set translationY directly (1:1 tracking). On
- * release a spring carries it to open or closed, starting from the finger's
- * real velocity. Touching the screen mid-animation cancels the spring and the
- * drawer is under the finger again; that is what "interruptible" means.
+ *   translationY == height  -> closed,  translationY == 0 -> open.
+ *
+ * The drawer is never INVISIBLE; when closed it sits off screen at alpha 0.
+ * That way its pages are already measured and laid out, and the first frame
+ * of the opening gesture has nothing to build.
  */
 class LauncherRootLayout(
     context: Context,
@@ -30,17 +32,21 @@ class LauncherRootLayout(
     private val drawer: DrawerView,
 ) : FrameLayout(context) {
 
-    /** Where the drawer is heading (or resting). */
     var isOpen = false
         private set
 
+    /** Called once per downward swipe on the home screen. */
+    var onSwipeDown: (() -> Unit)? = null
+
+    private enum class Mode { NONE, DRAWER, SWALLOW }
+
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
-    private val flingVelocity = context.dp(350).toFloat() // px per second
+    private val flingVelocity = context.dp(350).toFloat()
 
     private var tracker: VelocityTracker? = null
     private var downX = 0f
     private var downY = 0f
-    private var dragging = false
+    private var mode = Mode.NONE
     private var dragOffset = 0f
 
     private val settle = SpringAnimation(drawer, DynamicAnimation.TRANSLATION_Y)
@@ -49,13 +55,14 @@ class LauncherRootLayout(
         val match = ViewGroup.LayoutParams.MATCH_PARENT
         addView(home, FrameLayout.LayoutParams(match, match))
         addView(drawer, FrameLayout.LayoutParams(match, match))
-        drawer.visibility = View.INVISIBLE
+        drawer.alpha = 0f
+        drawer.translationY = 100_000f // replaced by the real height on first layout
 
         val force = SpringForce()
-        force.setStiffness(420f)
+        force.setStiffness(500f)
         force.setDampingRatio(0.9f)
         settle.setSpring(force)
-        settle.setMinValue(0f) // never overshoot past fully open
+        settle.setMinValue(0f)
         settle.addUpdateListener { _, _, _ -> applyProgress() }
         settle.addEndListener { _, canceled, _, _ -> if (!canceled) onSettled() }
     }
@@ -66,13 +73,12 @@ class LauncherRootLayout(
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
-        if (!isOpen && !dragging && !settle.isRunning) {
+        if (!isOpen && mode != Mode.DRAWER && !settle.isRunning) {
             drawer.translationY = h.toFloat()
             applyProgress()
         }
     }
 
-    /** Everything that depends on how far open the drawer is hangs off this one number. */
     private fun applyProgress() {
         val h = height.toFloat()
         if (h <= 0f) return
@@ -81,42 +87,31 @@ class LauncherRootLayout(
         val scale = 1f - 0.06f * progress
         home.scaleX = scale
         home.scaleY = scale
-        drawer.alpha = (progress * 2f).coerceAtMost(1f)
+        drawer.alpha = (progress * 2.5f).coerceAtMost(1f)
     }
 
     private fun animateTo(open: Boolean, velocity: Float) {
         if (height == 0) return
         isOpen = open
-        drawer.visibility = View.VISIBLE
         settle.setStartVelocity(velocity)
         settle.animateToFinalPosition(if (open) 0f else height.toFloat())
     }
 
     private fun onSettled() {
-        if (!isOpen) {
-            drawer.visibility = View.INVISIBLE
-            drawer.reset()
-        }
+        if (!isOpen) drawer.reset()
     }
 
     // ---- touch handling -------------------------------------------------
 
-    /**
-     * Android asks the parent first, on every event, "do you want to steal this
-     * gesture from your children?". We watch quietly, and once the finger has
-     * clearly moved vertically we return true: the child (an icon, the pager,
-     * the list) gets a cancel and the rest of the gesture comes to onTouchEvent.
-     */
     override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
         when (ev.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 downX = ev.x
                 downY = ev.y
-                dragging = false
+                mode = Mode.NONE
                 tracker?.recycle()
                 tracker = VelocityTracker.obtain()
                 tracker?.addMovement(ev)
-                // Finger landed while the drawer is still moving: catch it.
                 if (settle.isRunning) {
                     settle.cancel()
                     beginDrag(ev)
@@ -124,32 +119,30 @@ class LauncherRootLayout(
             }
             MotionEvent.ACTION_MOVE -> {
                 tracker?.addMovement(ev)
-                if (!dragging && shouldStartDrag(ev)) beginDrag(ev)
+                if (mode == Mode.NONE) decide(ev)
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                if (!dragging) releaseTracker()
+                if (mode == Mode.NONE) releaseTracker()
             }
         }
-        return dragging
+        return mode != Mode.NONE
     }
 
     override fun onTouchEvent(ev: MotionEvent): Boolean {
         when (ev.actionMasked) {
             MotionEvent.ACTION_MOVE -> {
                 tracker?.addMovement(ev)
-                if (!dragging && shouldStartDrag(ev)) beginDrag(ev)
-                if (dragging) {
+                if (mode == Mode.NONE) decide(ev)
+                if (mode == Mode.DRAWER) {
                     drawer.translationY = (ev.y + dragOffset).coerceIn(0f, height.toFloat())
                     applyProgress()
                 }
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                if (dragging) {
+                if (mode == Mode.DRAWER) {
                     tracker?.addMovement(ev)
                     tracker?.computeCurrentVelocity(1000)
                     val velocity = tracker?.yVelocity ?: 0f
-                    dragging = false
-                    // A flick decides by direction; a slow release decides by position.
                     val open = when {
                         velocity < -flingVelocity -> true
                         velocity > flingVelocity -> false
@@ -157,23 +150,31 @@ class LauncherRootLayout(
                     }
                     animateTo(open, velocity)
                 }
+                mode = Mode.NONE
                 releaseTracker()
             }
         }
         return true
     }
 
-    private fun shouldStartDrag(ev: MotionEvent): Boolean {
+    /** Decides, once the finger has moved far enough vertically, what this gesture is. */
+    private fun decide(ev: MotionEvent) {
         val dx = ev.x - downX
         val dy = ev.y - downY
-        if (abs(dy) < touchSlop || abs(dy) < abs(dx) * 1.5f) return false
-        return if (isOpen) dy > 0 && drawer.isAtTop() else dy < 0
+        if (abs(dy) < touchSlop || abs(dy) < abs(dx) * 1.5f) return
+        when {
+            isOpen && dy > 0 && drawer.isAtTop() -> beginDrag(ev)
+            !isOpen && dy < 0 -> beginDrag(ev)
+            !isOpen && dy > 0 -> {
+                mode = Mode.SWALLOW
+                onSwipeDown?.invoke()
+            }
+        }
     }
 
     private fun beginDrag(ev: MotionEvent) {
-        dragging = true
+        mode = Mode.DRAWER
         dragOffset = drawer.translationY - ev.y
-        drawer.visibility = View.VISIBLE
         parent?.requestDisallowInterceptTouchEvent(true)
     }
 
