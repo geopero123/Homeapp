@@ -12,5 +12,8 @@
         <item name="android:enforceStatusBarContrast">false</item>
         <item name="android:enforceNavigationBarContrast">false</item>
         <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+        <!-- After a key press (e.g. Back) Android leaves touch mode and greys out the
+             focused view (here the whole page pager). A launcher never wants that. -->
+        <item name="android:defaultFocusHighlightEnabled">false</item>
     </style>
 </resources>

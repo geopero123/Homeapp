@@ -216,7 +216,9 @@ class LauncherActivity : ComponentActivity() {
         pager = ViewPager2(this)
         pager.adapter = pagesAdapter
         pager.offscreenPageLimit = 1
+        pager.defaultFocusHighlightEnabled = false
         (pager.getChildAt(0) as? RecyclerView)?.apply {
+            defaultFocusHighlightEnabled = false
             overScrollMode = View.OVER_SCROLL_NEVER
             setItemViewCacheSize(10) // built pages stay built; swiping back never rebuilds them
         }
