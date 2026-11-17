@@ -11,8 +11,8 @@ android {
         applicationId = "dev.giorgi.silk"
         minSdk = 31
         targetSdk = 35
-        versionCode = 3
-        versionName = "0.3-ios"
+        versionCode = 4
+        versionName = "0.4-liquid"
     }
 
     // One fixed key, kept in the repo, so every CI build can be installed as an

@@ -8,6 +8,7 @@ shot() { sleep "${2:-1}"; adb exec-out screencap -p > "shots/$1.png"; }
 adb install -r Silk.apk
 adb shell cmd role add-role-holder --user 0 android.app.role.HOME dev.giorgi.silk 0
 adb shell cmd package set-home-activity dev.giorgi.silk/.LauncherActivity
+adb shell pm grant dev.giorgi.silk android.permission.READ_MEDIA_IMAGES
 adb logcat -c
 adb shell input keyevent KEYCODE_HOME
 shot 01-home-first-start 10
@@ -27,6 +28,12 @@ shot 05-search 2
 adb shell input keyevent KEYCODE_BACK
 adb shell input keyevent KEYCODE_BACK
 shot 06-back-home 2
+
+# Long-press an app icon (first icon row under the widgets): glass context menu.
+adb shell input swipe 155 1500 155 1500 1000
+shot 06c-icon-menu 1.5
+adb shell input keyevent KEYCODE_BACK
+sleep 1
 
 # Swipe to home page 2.
 adb shell input swipe 950 1200 100 1200 200

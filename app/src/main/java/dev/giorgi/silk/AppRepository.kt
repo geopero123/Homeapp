@@ -267,8 +267,10 @@ class AppRepository(private val context: Context) {
         val loc = IntArray(2)
         source.getLocationOnScreen(loc)
         val bounds = Rect(loc[0], loc[1], loc[0] + source.width, loc[1] + source.height)
+        // The app window grows out of the icon. (The full iOS icon-to-window
+        // morph needs a system-only API, so this is the closest available.)
         val options = ActivityOptions
-            .makeClipRevealAnimation(source, 0, 0, source.width, source.height)
+            .makeScaleUpAnimation(source, 0, 0, source.width, source.height)
             .toBundle()
         try {
             launcherApps.startMainActivity(app.component, app.user, bounds, options)

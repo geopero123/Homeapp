@@ -1,11 +1,11 @@
 package dev.giorgi.silk
 
 import android.annotation.SuppressLint
-import android.app.AlertDialog
 import android.appwidget.AppWidgetHost
 import android.appwidget.AppWidgetHostView
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProviderInfo
+import android.Manifest
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -18,15 +18,18 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.LinearLayout
-import android.widget.PopupMenu
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.dynamicanimation.animation.DynamicAnimation
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
+import kotlin.math.abs
 import kotlin.math.ceil
 
 /**
@@ -54,6 +57,24 @@ class LauncherActivity : ComponentActivity() {
     private lateinit var drawer: DrawerView
 
     private val pagesAdapter = PagesAdapter()
+    private lateinit var dockFrame: FrameLayout
+    private lateinit var menu: GlassMenu
+
+    /** Set when we open an app, so the return to home gets the zoom-out. */
+    private var launchedApp = false
+
+    private val photoPicker = registerForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) {
+            toast("Setting wallpaper…")
+            WallpaperSource.applyPhoto(this, uri) { ok -> if (!ok) toast("Couldn't use that photo") }
+        }
+    }
+
+    private val photoPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) {
+        WallpaperSource.reload(this) {
+            if (!WallpaperSource.available) pickPhoto()
+        }
+    }
 
     /** Android widget views, kept so a page rebind doesn't recreate them. */
     private val widgetViews = HashMap<Int, AppWidgetHostView>()
@@ -85,9 +106,14 @@ class LauncherActivity : ComponentActivity() {
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                if (root.isOpen) root.close()
+                when {
+                    menu.isShowing -> menu.dismiss()
+                    root.isOpen -> root.close()
+                }
             }
         })
+
+        WallpaperSource.start(this) { maybeAskForWallpaper() }
 
         repo.onAppsChanged = { onAppsChanged() }
         repo.onPackageRemoved = { packageName, serial ->
@@ -103,6 +129,26 @@ class LauncherActivity : ComponentActivity() {
             widgetHost.startListening()
         } catch (e: Exception) {
             Log.w(AppRepository.TAG, "widget host failed to start", e)
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        menu.dismiss(immediate = true)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (launchedApp) {
+            launchedApp = false
+            // iOS-style return: the home screen settles back from slightly zoomed in.
+            for (v in listOf(pager, indicator, dockFrame)) {
+                v.scaleX = 1.07f
+                v.scaleY = 1.07f
+                v.alpha = 0.4f
+                Motion.scale(v, 1f, 320f, 0.82f)
+                Motion.spring(v, DynamicAnimation.ALPHA, 1f, 300f, 1f)
+            }
         }
     }
 
@@ -124,6 +170,7 @@ class LauncherActivity : ComponentActivity() {
         super.onNewIntent(intent)
         if (intent.action != Intent.ACTION_MAIN) return
         val alreadyOnHome = hasWindowFocus()
+        if (menu.isShowing) menu.dismiss()
         if (root.isOpen) {
             root.close()
         } else if (alreadyOnHome) {
@@ -139,16 +186,26 @@ class LauncherActivity : ComponentActivity() {
         pager.adapter = pagesAdapter
         pager.offscreenPageLimit = 1
         (pager.getChildAt(0) as? RecyclerView)?.overScrollMode = View.OVER_SCROLL_NEVER
+        // Depth while swiping: the outgoing and incoming pages shrink and fade a little.
+        pager.setPageTransformer { page, position ->
+            val a = abs(position.coerceIn(-1f, 1f))
+            val s = 1f - 0.08f * a
+            page.scaleX = s
+            page.scaleY = s
+            page.alpha = 1f - 0.45f * a
+        }
         pager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
             override fun onPageScrolled(position: Int, positionOffset: Float, positionOffsetPixels: Int) {
                 indicator.position = position + positionOffset
+                // Widgets move over a still wallpaper, so their glass must redraw.
+                WallpaperSource.invalidateAll()
             }
         })
 
         dock = CellLayout(this, Dimens.DOCK_SLOTS, 1)
         dock.setPadding(dp(6), 0, dp(6), 0)
-        val dockFrame = FrameLayout(this)
-        dockFrame.background = Glass.panel(this, 34)
+        dockFrame = FrameLayout(this)
+        dockFrame.background = LiquidGlass(dockFrame, dpf(34f), 0.04f)
         dockFrame.addView(dock, FrameLayout.LayoutParams(MATCH, MATCH))
 
         home = LinearLayout(this)
@@ -160,11 +217,13 @@ class LauncherActivity : ComponentActivity() {
         home.addView(dockFrame, dockParams)
 
         drawer = DrawerView(this)
-        drawer.onAppClick = { app, view -> repo.launch(app, view) }
+        drawer.onAppClick = { app, view -> launch(app, view) }
         drawer.onAppLongClick = { app, view -> showDrawerIconMenu(app, view) }
 
-        root = LauncherRootLayout(this, home, drawer)
+        root = LauncherRootLayout(this, home, Backdrop(this), drawer)
         root.onSwipeDown = { expandNotifications() }
+        menu = GlassMenu(root)
+        menu.onShowingChanged = { showing -> root.gesturesEnabled = !showing }
     }
 
     private fun onAppsChanged() {
@@ -221,7 +280,7 @@ class LauncherActivity : ComponentActivity() {
             if (slot >= Dimens.DOCK_SLOTS) break
             val icon = IconView(this)
             icon.bind(app, showLabel = false)
-            icon.setOnClickListener { repo.launch(app, icon) }
+            icon.setOnClickListener { launch(app, icon) }
             icon.setOnLongClickListener {
                 showMenu(
                     icon,
@@ -241,14 +300,50 @@ class LauncherActivity : ComponentActivity() {
 
     // ---- menus -----------------------------------------------------------
 
-    private fun showMenu(anchor: View, vararg entries: Pair<String, () -> Unit>) {
-        val popup = PopupMenu(this, anchor)
-        entries.forEachIndexed { index, entry -> popup.menu.add(0, index, index, entry.first) }
-        popup.setOnMenuItemClickListener { item ->
-            entries[item.itemId].second.invoke()
-            true
+    private fun launch(app: AppInfo, view: View) {
+        launchedApp = true
+        repo.launch(app, view)
+    }
+
+    private fun showMenu(anchor: View?, vararg entries: Pair<String, () -> Unit>) {
+        menu.show(anchor, null, entries.toList())
+    }
+
+    // ---- wallpaper for Liquid Glass -----------------------------------------
+
+    private fun pickPhoto() {
+        photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+    }
+
+    /** Once: if the wallpaper can't be read, explain and offer the two ways to fix it. */
+    private fun maybeAskForWallpaper() {
+        if (WallpaperSource.available) return
+        val prefs = getSharedPreferences("silk", MODE_PRIVATE)
+        if (prefs.getBoolean("askedWallpaper", false)) return
+        prefs.edit().putBoolean("askedWallpaper", true).apply()
+        root.post {
+            menu.show(
+                null, "Liquid Glass needs to see your wallpaper",
+                listOf(
+                    "Allow photo access" to { photoPermission.launch(Manifest.permission.READ_MEDIA_IMAGES) },
+                    "Choose a wallpaper photo" to { pickPhoto() },
+                    "Not now" to {},
+                )
+            )
         }
-        popup.show()
+    }
+
+    private fun showWallpaperMenu() {
+        menu.show(
+            null, "Wallpaper",
+            listOf(
+                "Choose a photo" to { pickPhoto() },
+                "Allow photo access" to { photoPermission.launch(Manifest.permission.READ_MEDIA_IMAGES) },
+                "System wallpaper settings" to {
+                    startActivity(Intent.createChooser(Intent(Intent.ACTION_SET_WALLPAPER), "Wallpaper"))
+                },
+            )
+        )
     }
 
     private fun showHomeIconMenu(app: AppInfo, item: HomeItem, anchor: View) {
@@ -326,9 +421,7 @@ class LauncherActivity : ComponentActivity() {
                     toast("Only an empty page can be removed, and one page must stay")
                 }
             },
-            "Wallpaper" to {
-                startActivity(Intent.createChooser(Intent(Intent.ACTION_SET_WALLPAPER), "Wallpaper"))
-            },
+            "Wallpaper" to { showWallpaperMenu() },
             "Default home app" to { startActivity(Intent(Settings.ACTION_HOME_SETTINGS)) },
         )
     }
@@ -364,11 +457,7 @@ class LauncherActivity : ComponentActivity() {
         }.sortedBy { it.title.lowercase() }
         entries += androidEntries
 
-        AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-            .setTitle("Add widget")
-            .setItems(entries.map { it.title }.toTypedArray()) { _, which -> entries[which].action() }
-            .setNegativeButton("Cancel", null)
-            .show()
+        menu.show(null, "Add widget", entries.map { it.title to it.action })
     }
 
     /**
@@ -521,7 +610,7 @@ class LauncherActivity : ComponentActivity() {
                     val app = repo.find(item.key) ?: continue
                     val icon = IconView(this@LauncherActivity)
                     icon.bind(app)
-                    icon.setOnClickListener { repo.launch(app, icon) }
+                    icon.setOnClickListener { launch(app, icon) }
                     icon.setOnLongClickListener {
                         showHomeIconMenu(app, item, icon)
                         true

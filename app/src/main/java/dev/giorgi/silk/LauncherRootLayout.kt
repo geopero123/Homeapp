@@ -1,6 +1,8 @@
 package dev.giorgi.silk
 
 import android.content.Context
+import android.graphics.RenderEffect
+import android.graphics.Shader
 import android.view.MotionEvent
 import android.view.VelocityTracker
 import android.view.View
@@ -13,35 +15,38 @@ import androidx.dynamicanimation.animation.SpringForce
 import kotlin.math.abs
 
 /**
- * Holds the home screen and, on top of it, the app drawer, and owns the
- * vertical gestures:
- *   swipe up on home      -> drawer follows the finger, spring settles it
- *   swipe down on home    -> notification shade (One UI default)
- *   swipe down in drawer  -> drawer follows the finger back down
+ * Holds, bottom to top: the home screen, the blurred-wallpaper backdrop, and
+ * the App Library. Owns the vertical gestures:
+ *   swipe up on home      -> App Library follows the finger, spring settles it
+ *   swipe down on home    -> notification shade
+ *   swipe down in library -> library follows the finger back down
  *
- * The drawer's translationY is the single source of truth:
- *   translationY == height  -> closed,  translationY == 0 -> open.
- *
- * The drawer is never INVISIBLE; when closed it sits off screen at alpha 0.
- * That way its pages are already measured and laid out, and the first frame
- * of the opening gesture has nothing to build.
+ * Everything hangs off one number, the library's translationY:
+ *   height -> closed, 0 -> open. While the finger is down it's set directly
+ *   (1:1); on release a spring takes over from the finger's velocity; a new
+ *   touch cancels the spring and the finger owns it again.
  */
 class LauncherRootLayout(
     context: Context,
     private val home: View,
+    private val backdrop: View,
     private val drawer: DrawerView,
 ) : FrameLayout(context) {
 
     var isOpen = false
         private set
 
-    /** Called once per downward swipe on the home screen. */
     var onSwipeDown: (() -> Unit)? = null
+
+    /** False while a menu is showing: the menu gets every touch. */
+    var gesturesEnabled = true
 
     private enum class Mode { NONE, DRAWER, SWALLOW }
 
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
     private val flingVelocity = context.dp(350).toFloat()
+    private val maxBlur = context.dpf(18f)
+    private var lastBlur = 0f
 
     private var tracker: VelocityTracker? = null
     private var downX = 0f
@@ -54,13 +59,15 @@ class LauncherRootLayout(
     init {
         val match = ViewGroup.LayoutParams.MATCH_PARENT
         addView(home, FrameLayout.LayoutParams(match, match))
+        addView(backdrop, FrameLayout.LayoutParams(match, match))
         addView(drawer, FrameLayout.LayoutParams(match, match))
+        backdrop.alpha = 0f
         drawer.alpha = 0f
-        drawer.translationY = 100_000f // replaced by the real height on first layout
+        drawer.translationY = 100_000f
 
         val force = SpringForce()
-        force.setStiffness(500f)
-        force.setDampingRatio(0.9f)
+        force.setStiffness(450f)
+        force.setDampingRatio(0.86f)
         settle.setSpring(force)
         settle.setMinValue(0f)
         settle.addUpdateListener { _, _, _ -> applyProgress() }
@@ -83,11 +90,24 @@ class LauncherRootLayout(
         val h = height.toFloat()
         if (h <= 0f) return
         val progress = (1f - drawer.translationY / h).coerceIn(0f, 1f)
-        home.alpha = 1f - progress
-        val scale = 1f - 0.06f * progress
+        // Home recedes: shrinks, blurs and fades under the library.
+        val scale = 1f - 0.08f * progress
         home.scaleX = scale
         home.scaleY = scale
+        home.alpha = 1f - 0.7f * progress
+        val blur = maxBlur * progress
+        if (abs(blur - lastBlur) > 0.5f || (blur == 0f && lastBlur != 0f)) {
+            home.setRenderEffect(
+                if (blur < 0.5f) null else RenderEffect.createBlurEffect(blur, blur, Shader.TileMode.CLAMP)
+            )
+            lastBlur = blur
+        }
+        backdrop.alpha = progress
+        // Library content arrives in stages: it fades in over the first 40% of travel.
         drawer.alpha = (progress * 2.5f).coerceAtMost(1f)
+        val contentScale = 0.94f + 0.06f * progress
+        drawer.scaleX = contentScale
+        drawer.scaleY = contentScale
     }
 
     private fun animateTo(open: Boolean, velocity: Float) {
@@ -101,9 +121,11 @@ class LauncherRootLayout(
         if (!isOpen) drawer.reset()
     }
 
-    // ---- touch handling -------------------------------------------------
-
     override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
+        if (!gesturesEnabled) {
+            mode = Mode.NONE
+            return false
+        }
         when (ev.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 downX = ev.x
@@ -157,7 +179,6 @@ class LauncherRootLayout(
         return true
     }
 
-    /** Decides, once the finger has moved far enough vertically, what this gesture is. */
     private fun decide(ev: MotionEvent) {
         val dx = ev.x - downX
         val dy = ev.y - downY

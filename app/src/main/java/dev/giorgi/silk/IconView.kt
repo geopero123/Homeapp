@@ -7,6 +7,8 @@ import android.graphics.drawable.BitmapDrawable
 import android.text.TextUtils
 import android.util.TypedValue
 import android.view.Gravity
+import android.view.HapticFeedbackConstants
+import android.view.MotionEvent
 import android.widget.TextView
 
 /** An app icon with its label underneath. Used on home pages, the dock and the drawer. */
@@ -27,6 +29,18 @@ class IconView(context: Context) : TextView(context) {
         setShadowLayer(5f, 0f, 1f, 0x80000000.toInt())
         compoundDrawablePadding = context.dp(5)
         setPadding(context.dp(2), context.dp(4), context.dp(2), context.dp(4))
+    }
+
+    /** Press feedback: sink to 90% on touch, spring back with a small bounce. */
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                Motion.scale(this, 0.88f, 1200f, 1f)
+                performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> Motion.scale(this, 1f, 500f, 0.5f)
+        }
+        return super.onTouchEvent(event)
     }
 
     fun bind(app: AppInfo, showLabel: Boolean = true) {

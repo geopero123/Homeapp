@@ -44,7 +44,7 @@ class DrawerView(context: Context) : LinearLayout(context) {
         isClickable = true
         isFocusable = true
         isFocusableInTouchMode = true
-        setBackgroundColor(0xE6121214.toInt())
+        // The blurred wallpaper behind is drawn by Backdrop, which does not move.
 
         search.hint = "App Library"
         search.setSingleLine(true)

@@ -7,6 +7,11 @@
     <!-- Swipe down on the home screen opens the notification shade. -->
     <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
 
+    <!-- Liquid Glass: read the wallpaper image to blur it, or set a picked photo as wallpaper. -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.SET_WALLPAPER" />
+
     <!-- Android 11+ package visibility. LauncherApps already returns every
          launchable app; these entries are for resolving the default dialer,
          SMS, browser and camera apps when the dock is seeded on first run. -->

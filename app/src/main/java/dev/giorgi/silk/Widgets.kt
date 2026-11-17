@@ -48,6 +48,7 @@ class WidgetFrame(context: Context) : FrameLayout(context) {
     override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
         when (ev.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
+                Motion.scale(this, 0.96f, 900f, 1f)
                 fired = false
                 downX = ev.x
                 downY = ev.y
@@ -55,7 +56,10 @@ class WidgetFrame(context: Context) : FrameLayout(context) {
             }
             MotionEvent.ACTION_MOVE ->
                 if (hypot(ev.x - downX, ev.y - downY) > slop) removeCallbacks(trigger)
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> removeCallbacks(trigger)
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                removeCallbacks(trigger)
+                Motion.scale(this, 1f, 500f, 0.55f)
+            }
         }
         return fired
     }
@@ -63,6 +67,7 @@ class WidgetFrame(context: Context) : FrameLayout(context) {
     override fun onTouchEvent(ev: MotionEvent): Boolean {
         if (ev.actionMasked == MotionEvent.ACTION_UP || ev.actionMasked == MotionEvent.ACTION_CANCEL) {
             removeCallbacks(trigger)
+            Motion.scale(this, 1f, 500f, 0.55f)
         }
         return fired || super.onTouchEvent(ev)
     }
@@ -85,7 +90,7 @@ object SilkWidgets {
     fun create(context: Context, key: String): View? = when (key) {
         CLOCK -> clock(context)
         CALENDAR -> calendar(context)
-        BATTERY -> BatteryWidget(context).also { it.background = Glass.panel(context, 26) }
+        BATTERY -> BatteryWidget(context).also { it.background = LiquidGlass(it, context.dpf(26f), 0.12f) }
         else -> null
     }
 
@@ -105,7 +110,7 @@ object SilkWidgets {
         val box = LinearLayout(context)
         box.orientation = LinearLayout.VERTICAL
         box.gravity = Gravity.CENTER_VERTICAL
-        box.background = Glass.panel(context, 26)
+        box.background = LiquidGlass(box, context.dpf(26f), 0.12f)
         box.setPadding(context.dp(22), context.dp(16), context.dp(22), context.dp(16))
         val time = clockText(context, "H:mm", 68f, light = true)
         time.format12Hour = "h:mm"
@@ -119,7 +124,7 @@ object SilkWidgets {
     private fun calendar(context: Context): View {
         val box = LinearLayout(context)
         box.orientation = LinearLayout.VERTICAL
-        box.background = Glass.panel(context, 26)
+        box.background = LiquidGlass(box, context.dpf(26f), 0.12f)
         box.setPadding(context.dp(18), context.dp(14), context.dp(18), context.dp(14))
         val day = clockText(context, "EEEE", 14f, light = false)
         day.setTextColor(0xFFFF453A.toInt())
