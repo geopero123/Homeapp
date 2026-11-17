@@ -56,4 +56,6 @@ dependencies {
     implementation("androidx.recyclerview:recyclerview:1.3.2")
     implementation("androidx.viewpager2:viewpager2:1.1.0")
     implementation("androidx.dynamicanimation:dynamicanimation:1.0.0")
+    // ViewPager2 pulls in an old Fragment; the photo picker needs 1.3+.
+    implementation("androidx.fragment:fragment-ktx:1.8.5")
 }
