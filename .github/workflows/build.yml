@@ -8,6 +8,11 @@ on:
 permissions:
   contents: write
 
+# Pushes are built one after another, so two runs never fight over the release.
+concurrency:
+  group: silk-main-release
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-latest

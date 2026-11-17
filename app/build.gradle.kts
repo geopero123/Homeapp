@@ -11,8 +11,9 @@ android {
         applicationId = "dev.giorgi.silk"
         minSdk = 31
         targetSdk = 35
-        versionCode = 5
-        versionName = "0.4-liquid"
+        // Every CI build gets its own number, so the phone sees each one as an update.
+        versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 5
+        versionName = "0.5+" + (System.getenv("GITHUB_RUN_NUMBER") ?: "local")
     }
 
     // One fixed key, kept in the repo, so every CI build can be installed as an

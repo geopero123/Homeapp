@@ -2,15 +2,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Lets us fire the system "Uninstall?" dialog from the long-press menu. -->
-    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
 
     <!-- Swipe down on the home screen opens the notification shade. -->
     <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
 
     <!-- Liquid Glass: read the wallpaper image to blur it, or set a picked photo as wallpaper. -->
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.SET_WALLPAPER" />
     <!-- Optional "All files access": lets Silk read whatever wallpaper you set in Samsung settings. -->
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
@@ -42,7 +38,7 @@
     </queries>
 
     <application
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="Silk"
         android:supportsRtl="true"

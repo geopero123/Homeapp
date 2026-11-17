@@ -9,6 +9,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.os.Process
+import android.os.UserManager
 import android.provider.MediaStore
 import android.provider.Settings
 import android.util.Log
@@ -76,8 +77,26 @@ class LauncherActivity : ComponentActivity() {
     private val widgetViews = HashMap<Int, AppWidgetHostView>()
 
     /** The Android widget being added while the bind/configure screens are open. */
-    private var pendingWidgetId = -1
+    /** Persisted: survives Silk being killed while a widget's bind/setup screen is open. */
+    private var pendingWidgetId: Int
+        get() = getSharedPreferences("silk", MODE_PRIVATE).getInt("pendingWidgetId", -1)
+        set(v) {
+            getSharedPreferences("silk", MODE_PRIVATE).edit().putInt("pendingWidgetId", v).apply()
+        }
     private var pendingWidgetInfo: AppWidgetProviderInfo? = null
+
+    /** Frees widget ids that were allocated but never ended up on the home screen. */
+    private fun deleteOrphanWidgetIds() {
+        val used = store.pages.flatten().filter { it.type == HomeItem.APPWIDGET }.map { it.widgetId }.toHashSet()
+        val pending = pendingWidgetId
+        try {
+            for (id in widgetHost.appWidgetIds) {
+                if (id !in used && id != pending) widgetHost.deleteAppWidgetId(id)
+            }
+        } catch (e: Exception) {
+            Log.w(AppRepository.TAG, "widget cleanup failed", e)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -88,6 +107,7 @@ class LauncherActivity : ComponentActivity() {
         store.load()
         widgetManager = AppWidgetManager.getInstance(this)
         widgetHost = AppWidgetHost(applicationContext, WIDGET_HOST_ID)
+        deleteOrphanWidgetIds()
 
         buildViews()
         setContentView(root)
@@ -113,8 +133,12 @@ class LauncherActivity : ComponentActivity() {
 
         repo.onAppsChanged = { onAppsChanged() }
         repo.onPackageRemoved = { packageName, serial ->
-            store.removePackage(packageName, serial)
+            for (id in store.removePackage(packageName, serial)) {
+                widgetViews.remove(id)
+                widgetHost.deleteAppWidgetId(id)
+            }
             store.save()
+            refreshHome()
         }
         repo.start()
     }
@@ -145,11 +169,16 @@ class LauncherActivity : ComponentActivity() {
             launchedApp = false
             // iOS-style return: the home screen settles back from slightly zoomed in.
             for (v in listOf(pager, indicator, dockFrame)) {
+                Motion.cancel(v)
+                // One GPU layer for the zoom: the content is drawn once, then only scaled.
+                v.setLayerType(View.LAYER_TYPE_HARDWARE, null)
                 v.scaleX = 1.07f
                 v.scaleY = 1.07f
                 v.alpha = 0.4f
                 Motion.scale(v, 1f, 320f, 0.82f)
-                Motion.spring(v, DynamicAnimation.ALPHA, 1f, 300f, 1f)
+                Motion.spring(v, DynamicAnimation.ALPHA, 1f, 300f, 1f) {
+                    v.setLayerType(View.LAYER_TYPE_NONE, null)
+                }
             }
         }
     }
@@ -187,7 +216,10 @@ class LauncherActivity : ComponentActivity() {
         pager = ViewPager2(this)
         pager.adapter = pagesAdapter
         pager.offscreenPageLimit = 1
-        (pager.getChildAt(0) as? RecyclerView)?.overScrollMode = View.OVER_SCROLL_NEVER
+        (pager.getChildAt(0) as? RecyclerView)?.apply {
+            overScrollMode = View.OVER_SCROLL_NEVER
+            setItemViewCacheSize(10) // built pages stay built; swiping back never rebuilds them
+        }
         // Depth while swiping: the outgoing and incoming pages shrink and fade a little.
         pager.setPageTransformer { page, position ->
             val a = abs(position.coerceIn(-1f, 1f))
@@ -200,14 +232,14 @@ class LauncherActivity : ComponentActivity() {
             override fun onPageScrolled(position: Int, positionOffset: Float, positionOffsetPixels: Int) {
                 indicator.position = position + positionOffset
                 // Widgets move over a still wallpaper, so their glass must redraw.
-                WallpaperSource.invalidateAll()
+                WallpaperSource.invalidatePagerGlass()
             }
         })
 
         dock = CellLayout(this, Dimens.DOCK_SLOTS, 1)
         dock.setPadding(dp(6), 0, dp(6), 0)
         dockFrame = FrameLayout(this)
-        dockFrame.background = LiquidGlass(dockFrame, dpf(34f), 0.04f)
+        dockFrame.background = LiquidGlass(dockFrame, dpf(34f), 0.04f, followsPager = false)
         dockFrame.addView(dock, FrameLayout.LayoutParams(MATCH, MATCH))
 
         home = LinearLayout(this)
@@ -226,13 +258,51 @@ class LauncherActivity : ComponentActivity() {
         root.onSwipeDown = { expandNotifications() }
         menu = GlassMenu(root)
         menu.onShowingChanged = { showing -> root.gesturesEnabled = !showing }
+        root.homeSettling = { pager.scrollState == ViewPager2.SCROLL_STATE_SETTLING }
     }
 
     private fun onAppsChanged() {
-        if (store.isFirstRun) seedDock()
-        if (!store.homeSeeded) seedHome()
+        if (repo.apps.isNotEmpty()) {
+            if (store.isFirstRun) seedDock()
+            // Seed from the complete live list, so no apps are missed.
+            if (!store.homeSeeded && repo.isLive) seedHome()
+        }
+        pruneDeadWidgets()
+        pruneMissingApps()
         drawer.setApps(repo.apps)
         refreshHome()
+    }
+
+    /** Widgets whose app was uninstalled (even while Silk wasn't running) leave no holes. */
+    private fun pruneDeadWidgets() {
+        var changed = false
+        for (page in store.pages) {
+            val it = page.iterator()
+            while (it.hasNext()) {
+                val item = it.next()
+                if (item.type == HomeItem.APPWIDGET && widgetManager.getAppWidgetInfo(item.widgetId) == null) {
+                    widgetViews.remove(item.widgetId)
+                    widgetHost.deleteAppWidgetId(item.widgetId)
+                    it.remove()
+                    changed = true
+                }
+            }
+        }
+        if (changed) store.save()
+    }
+
+    /** Apps uninstalled while Silk wasn't running: drop their icons once the full list is known. */
+    private fun pruneMissingApps() {
+        if (!repo.isLive) return
+        // Only the main profile: a paused work profile can legitimately list nothing.
+        val mine = "#" + getSystemService(UserManager::class.java)
+            .getSerialNumberForUser(Process.myUserHandle())
+        fun gone(key: String) = key.endsWith(mine) && repo.find(key) == null
+        var changed = store.dock.removeAll { gone(it) }
+        for (page in store.pages) {
+            if (page.removeAll { it.type == HomeItem.APP && gone(it.key) }) changed = true
+        }
+        if (changed) store.save()
     }
 
     private fun seedDock() {
@@ -305,6 +375,8 @@ class LauncherActivity : ComponentActivity() {
     private fun launch(app: AppInfo, view: View) {
         launchedApp = true
         repo.launch(app, view)
+        // The launch has read the icon's position; now the library can close behind the app.
+        if (root.isOpen) root.close()
     }
 
     private fun showMenu(anchor: View?, vararg entries: Pair<String, () -> Unit>) {
@@ -319,6 +391,7 @@ class LauncherActivity : ComponentActivity() {
 
     /** Once: if the wallpaper can't be read, explain and offer the two ways to fix it. */
     private fun maybeAskForWallpaper() {
+        if (isFinishing || isDestroyed) return
         if (WallpaperSource.available) return
         val prefs = getSharedPreferences("silk", MODE_PRIVATE)
         if (prefs.getBoolean("askedWallpaper", false)) return
@@ -346,7 +419,12 @@ class LauncherActivity : ComponentActivity() {
                 Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.parse("package:$packageName"))
             )
         } catch (e: Exception) {
-            startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
+            try {
+                startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
+            } catch (e2: Exception) {
+                awaitingFileAccess = false
+                toast("Can't open the file access settings")
+            }
         }
     }
 
@@ -397,10 +475,14 @@ class LauncherActivity : ComponentActivity() {
             anchor,
             "Add to Home" to {
                 val page = store.addToHome(app.key, pager.currentItem)
-                store.save()
-                refreshHome()
-                root.close()
-                pager.setCurrentItem(page, false)
+                if (page < 0) {
+                    toast("Already on Home")
+                } else {
+                    store.save()
+                    refreshHome()
+                    root.close()
+                    pager.setCurrentItem(page, false)
+                }
             },
             "Add to Dock" to { addToDock(app) },
             "App info" to { repo.showAppInfo(app, anchor) },
@@ -411,7 +493,7 @@ class LauncherActivity : ComponentActivity() {
     private fun addToDock(app: AppInfo) {
         when {
             app.key in store.dock -> toast("Already in the Dock")
-            store.dock.size >= Dimens.DOCK_SLOTS -> toast("The Dock is full")
+            store.dock.count { repo.find(it) != null } >= Dimens.DOCK_SLOTS -> toast("The Dock is full")
             else -> {
                 store.dock += app.key
                 store.save()
@@ -501,7 +583,14 @@ class LauncherActivity : ComponentActivity() {
     }
 
     private fun configureOrPlace(id: Int) {
-        val info = pendingWidgetInfo ?: return
+        // After Silk was recreated, pendingWidgetInfo is gone; the bound widget still knows its provider.
+        val info = widgetManager.getAppWidgetInfo(id) ?: pendingWidgetInfo
+        if (info == null) {
+            widgetHost.deleteAppWidgetId(id)
+            pendingWidgetId = -1
+            return
+        }
+        pendingWidgetInfo = info
         if (info.configure != null) {
             try {
                 widgetHost.startAppWidgetConfigureActivityForResult(this, id, 0, REQ_CONFIGURE, null)
@@ -520,18 +609,25 @@ class LauncherActivity : ComponentActivity() {
         if (requestCode != REQ_BIND && requestCode != REQ_CONFIGURE) return
         val id = data?.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, pendingWidgetId) ?: pendingWidgetId
         if (resultCode != RESULT_OK) {
-            widgetHost.deleteAppWidgetId(id)
+            if (id != -1) widgetHost.deleteAppWidgetId(id)
             pendingWidgetInfo = null
+            pendingWidgetId = -1
             return
         }
         if (requestCode == REQ_BIND) configureOrPlace(id) else placeAppWidget(id)
     }
 
     private fun placeAppWidget(id: Int) {
-        val info = widgetManager.getAppWidgetInfo(id) ?: pendingWidgetInfo ?: return
+        val info = widgetManager.getAppWidgetInfo(id) ?: pendingWidgetInfo
         pendingWidgetInfo = null
-        val cellW = if (pager.width > 0) pager.width / Dimens.GRID_COLS else resources.displayMetrics.widthPixels / Dimens.GRID_COLS
-        val cellH = if (pager.height > 0) pager.height / Dimens.GRID_ROWS else cellW
+        pendingWidgetId = -1
+        if (info == null) {
+            widgetHost.deleteAppWidgetId(id)
+            return
+        }
+        // Same maths as the page's CellLayout, minus its padding.
+        val cellW = (if (pager.width > 0) pager.width - 2 * dp(10) else resources.displayMetrics.widthPixels) / Dimens.GRID_COLS
+        val cellH = if (pager.height > 0) (pager.height - dp(8)) / Dimens.GRID_ROWS else cellW
         val spanX = if (info.targetCellWidth > 0) info.targetCellWidth
             else ceil(info.minWidth / cellW.toDouble()).toInt()
         val spanY = if (info.targetCellHeight > 0) info.targetCellHeight
@@ -612,7 +708,8 @@ class LauncherActivity : ComponentActivity() {
             val cells = CellLayout(this@LauncherActivity, Dimens.GRID_COLS, Dimens.GRID_ROWS)
             cells.layoutParams = RecyclerView.LayoutParams(MATCH, MATCH)
             cells.setPadding(dp(10), dp(8), dp(10), 0)
-            cells.setOnLongClickListener {
+            cells.setOnLongClickListener { v ->
+                v.parent?.requestDisallowInterceptTouchEvent(true)
                 showHomeMenu()
                 true
             }

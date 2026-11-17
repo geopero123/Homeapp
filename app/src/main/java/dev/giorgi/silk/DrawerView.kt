@@ -17,6 +17,7 @@ import android.widget.LinearLayout
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
+import java.text.Normalizer
 
 /**
  * The app drawer, One UI style: a search pill on top, apps in horizontal
@@ -67,7 +68,7 @@ class DrawerView(context: Context) : LinearLayout(context) {
         search.setOnEditorActionListener { v, actionId, _ ->
             val first = resultsAdapter.items.firstOrNull()
             if (actionId == EditorInfo.IME_ACTION_GO && first != null) {
-                onAppClick?.invoke(first, v)
+                onAppClick?.invoke(first, results.getChildAt(0) ?: v)
                 true
             } else {
                 false
@@ -84,7 +85,10 @@ class DrawerView(context: Context) : LinearLayout(context) {
                 dots.position = position + positionOffset
             }
         })
-        (pager.getChildAt(0) as? RecyclerView)?.overScrollMode = View.OVER_SCROLL_NEVER
+        (pager.getChildAt(0) as? RecyclerView)?.apply {
+            overScrollMode = View.OVER_SCROLL_NEVER
+            setItemViewCacheSize(16) // built pages stay built; swiping back never rebuilds them
+        }
 
         results.layoutManager = GridLayoutManager(context, Dimens.DRAWER_COLS)
         results.adapter = resultsAdapter
@@ -116,11 +120,16 @@ class DrawerView(context: Context) : LinearLayout(context) {
     fun isAtTop(): Boolean =
         results.visibility != View.VISIBLE || !results.canScrollVertically(-1)
 
+    /** Hides the keyboard as soon as a close starts, not when it ends. */
+    fun dismissKeyboard() {
+        val token = search.windowToken ?: return
+        context.getSystemService(InputMethodManager::class.java).hideSoftInputFromWindow(token, 0)
+        search.clearFocus()
+    }
+
     /** Called when the drawer has fully closed. */
     fun reset() {
-        context.getSystemService(InputMethodManager::class.java)
-            .hideSoftInputFromWindow(windowToken, 0)
-        search.clearFocus()
+        dismissKeyboard()
         if (search.text.isNotEmpty()) search.text.clear()
         pager.setCurrentItem(0, false)
         results.scrollToPosition(0)
@@ -132,18 +141,40 @@ class DrawerView(context: Context) : LinearLayout(context) {
         results.visibility = if (searching) View.VISIBLE else View.GONE
         pager.visibility = if (searching) View.INVISIBLE else View.VISIBLE
         dots.visibility = if (searching) View.INVISIBLE else View.VISIBLE
-        resultsAdapter.items =
-            if (searching) allApps.filter { it.label.contains(query, ignoreCase = true) }
-            else emptyList()
+        resultsAdapter.items = if (searching) rank(fold(query)) else emptyList()
         resultsAdapter.notifyDataSetChanged()
     }
 
-    private fun makeIcon(app: AppInfo): IconView {
+    /** Lower-case and strip accents ("café" == "cafe"). Georgian has no case or marks. */
+    private fun fold(s: String): String =
+        Normalizer.normalize(s, Normalizer.Form.NFD).replace(MARKS, "").lowercase()
+
+    /**
+     * Best matches first: label starts with it, then a word starts with it,
+     * then anywhere in the label, then the package name. Alphabetical within each.
+     */
+    private fun rank(query: String): List<AppInfo> {
+        val scored = ArrayList<Pair<AppInfo, Int>>()
+        for (app in allApps) {
+            val label = fold(app.label)
+            val tier = when {
+                label.startsWith(query) -> 0
+                label.split(WORD_SPLIT).any { it.startsWith(query) } -> 1
+                label.contains(query) -> 2
+                app.component.packageName.lowercase().contains(query) -> 3
+                else -> continue
+            }
+            scored += app to tier
+        }
+        return scored.sortedBy { it.second }.map { it.first }
+    }
+
+    /** Listeners read the app from the view, so a reused icon picks up its new app. */
+    private fun makeIcon(): IconView {
         val icon = IconView(context)
-        icon.bind(app)
-        icon.setOnClickListener { v -> onAppClick?.invoke(app, v) }
+        icon.setOnClickListener { v -> (v as IconView).app?.let { onAppClick?.invoke(it, v) } }
         icon.setOnLongClickListener { v ->
-            onAppLongClick?.invoke(app, v)
+            (v as IconView).app?.let { onAppLongClick?.invoke(it, v) }
             true
         }
         return icon
@@ -166,10 +197,14 @@ class DrawerView(context: Context) : LinearLayout(context) {
         }
 
         override fun onBindViewHolder(holder: PageHolder, position: Int) {
+            // Reuse the page's icons; cell i is always at (i % cols, i / cols).
             val cells = holder.cells
-            cells.removeAllViews()
-            pages[position].forEachIndexed { i, app ->
-                cells.addAt(makeIcon(app), i % Dimens.DRAWER_COLS, i / Dimens.DRAWER_COLS)
+            val apps = pages[position]
+            while (cells.childCount > apps.size) cells.removeViewAt(cells.childCount - 1)
+            apps.forEachIndexed { i, app ->
+                val icon = cells.getChildAt(i) as? IconView
+                    ?: makeIcon().also { cells.addAt(it, i % Dimens.DRAWER_COLS, i / Dimens.DRAWER_COLS) }
+                if (icon.app !== app) icon.bind(app)
             }
         }
     }
@@ -203,5 +238,10 @@ class DrawerView(context: Context) : LinearLayout(context) {
         override fun onBindViewHolder(holder: ResultHolder, position: Int) {
             holder.icon.bind(items[position])
         }
+    }
+
+    private companion object {
+        val MARKS = Regex("\\p{Mn}+")
+        val WORD_SPLIT = Regex("[\\s\\-._]+")
     }
 }

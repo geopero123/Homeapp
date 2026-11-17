@@ -9,7 +9,10 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.BitmapShader
+import android.graphics.Paint
 import android.graphics.Rect
+import android.graphics.Shader
 import android.graphics.drawable.AdaptiveIconDrawable
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
@@ -62,7 +65,7 @@ class AppRepository(private val context: Context) {
     private val iconPx = context.dp(Dimens.ICON_DP)
     private val iconDir = File(context.filesDir, "icons").apply { mkdirs() }
     // Bump the version whenever icon rendering changes, so old cached icons are dropped.
-    private val indexFile = File(context.filesDir, "apps_index_v2.json")
+    private val indexFile = File(context.filesDir, "apps_index_v3.json")
 
     var apps: List<AppInfo> = emptyList()
         private set
@@ -97,9 +100,20 @@ class AppRepository(private val context: Context) {
         reload()
     }
 
+    /** Called from onDestroy: drops callbacks into the dead activity and frees the threads. */
     fun stop() {
         launcherApps.unregisterCallback(callback)
+        onAppsChanged = null
+        onPackageRemoved = null
+        main.removeCallbacksAndMessages(null)
+        io.execute { iconPool.shutdown() } // after any queued reload has finished
+        io.shutdown()
     }
+
+    /** True once [apps] comes from a complete LauncherApps query (not the disk cache). */
+    var isLive = false
+        private set
+    private var livePublished = false // io thread only
 
     fun find(key: String): AppInfo? = byKey[key]
 
@@ -108,11 +122,12 @@ class AppRepository(private val context: Context) {
         return apps.firstOrNull { it.component.packageName == packageName && it.user == me }
     }
 
-    private fun publish(list: List<AppInfo>) {
+    private fun publish(list: List<AppInfo>, live: Boolean = false) {
         val map = list.associateBy { it.key }
         main.post {
             apps = list
             byKey = map
+            isLive = live
             onAppsChanged?.invoke()
         }
     }
@@ -132,6 +147,7 @@ class AppRepository(private val context: Context) {
                 val component = ComponentName.unflattenFromString(o.getString("component")) ?: continue
                 val key = o.getString("key")
                 val bitmap = BitmapFactory.decodeFile(iconFile(key).path) ?: continue
+                if (bitmap.width != iconPx) continue // drawn at another size: render it again
                 result += AppInfo(component, user, serial, o.getString("label"), bitmap, key, o.getLong("version"))
             }
             lastLoaded = result
@@ -145,7 +161,7 @@ class AppRepository(private val context: Context) {
     // ---- step 2: real list ----------------------------------------------------
 
     fun reload() {
-        if (reloadQueued) return
+        if (reloadQueued || io.isShutdown) return
         reloadQueued = true
         io.execute {
             reloadQueued = false
@@ -153,6 +169,7 @@ class AppRepository(private val context: Context) {
             val previous = lastLoaded.associateBy { it.key }
             val futures = ArrayList<Future<AppInfo>>()
             val fresh = HashSet<String>()
+            var complete = true
             try {
                 for (user in userManager.userProfiles) {
                     val serial = userManager.getSerialNumberForUser(user)
@@ -167,13 +184,20 @@ class AppRepository(private val context: Context) {
                         } else {
                             fresh += key
                             iconPool.submit(Callable {
-                                AppInfo(component, user, serial, label,
-                                    render(info.getIcon(0), user), key, version)
+                                try {
+                                    AppInfo(component, user, serial, label,
+                                        render(info.getIcon(0), user), key, version)
+                                } catch (e: Throwable) {
+                                    // Keep the app, with its previous icon if there is one.
+                                    Log.w(TAG, "icon render failed: $key", e)
+                                    previous[key] ?: throw e
+                                }
                             })
                         }
                     }
                 }
             } catch (e: Exception) {
+                complete = false
                 Log.w(TAG, "profile changed while loading", e)
             }
             val result = ArrayList<AppInfo>(futures.size)
@@ -189,17 +213,28 @@ class AppRepository(private val context: Context) {
 
             val changed = fresh.isNotEmpty() || result.size != lastLoaded.size
             lastLoaded = result
-            if (changed) publish(result)
+            if (changed || (complete && !livePublished)) {
+                if (complete) livePublished = true
+                publish(result, live = complete)
+            }
             Log.i(TAG, "reload: ${result.size} apps, ${fresh.size} icons rendered, " +
                 "${SystemClock.uptimeMillis() - t0} ms")
             if (changed) writeCache(result, fresh)
         }
     }
 
-    private fun versionOf(info: LauncherActivityInfo): Long = try {
-        context.packageManager.getPackageInfo(info.componentName.packageName, 0).lastUpdateTime
-    } catch (e: Exception) {
-        info.firstInstallTime
+    private fun versionOf(info: LauncherActivityInfo): Long {
+        val ai = info.applicationInfo
+        if (info.user == Process.myUserHandle()) {
+            try {
+                return context.packageManager.getPackageInfo(ai.packageName, 0).lastUpdateTime
+            } catch (e: Exception) {
+                // Fall through.
+            }
+        }
+        // Other profiles: the APK directory is renamed on every update.
+        val dir = ai.sourceDir ?: return info.firstInstallTime
+        return (dir.hashCode().toLong() shl 32) or ((File(dir).lastModified() / 1000) and 0xFFFFFFFFL)
     }
 
     private fun iconFile(key: String) =
@@ -239,9 +274,10 @@ class AppRepository(private val context: Context) {
      */
     private fun render(drawable: Drawable, user: UserHandle): Bitmap {
         val size = iconPx.toFloat()
-        val bitmap = Bitmap.createBitmap(iconPx, iconPx, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
-        canvas.clipPath(Glass.squircle(size))
+        // Draw the icon into a plain layer, then mask it with an anti-aliased squircle
+        // (clipPath on a bitmap canvas leaves hard, jagged edges).
+        val layer = Bitmap.createBitmap(iconPx, iconPx, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(layer)
         if (drawable is AdaptiveIconDrawable) {
             val inset = (iconPx * 0.25f).toInt()
             for (layer in listOf(drawable.background, drawable.foreground)) {
@@ -255,6 +291,11 @@ class AppRepository(private val context: Context) {
             drawable.setBounds(pad, pad, iconPx - pad, iconPx - pad)
             drawable.draw(canvas)
         }
+        val bitmap = Bitmap.createBitmap(iconPx, iconPx, Bitmap.Config.ARGB_8888)
+        Canvas(bitmap).drawPath(Glass.squircle(size), Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = BitmapShader(layer, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP)
+        })
+        layer.recycle()
         if (user == Process.myUserHandle()) return bitmap
         val badged = context.packageManager.getUserBadgedIcon(BitmapDrawable(context.resources, bitmap), user)
         val out = Bitmap.createBitmap(iconPx, iconPx, Bitmap.Config.ARGB_8888)

@@ -10,6 +10,7 @@ import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Typeface
 import android.os.BatteryManager
+import android.os.SystemClock
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.HapticFeedbackConstants
@@ -23,53 +24,93 @@ import androidx.core.content.ContextCompat
 import kotlin.math.hypot
 
 /**
- * Wraps any widget (Silk's own or an Android one). Widgets eat their own
- * touches, so long-press is detected here, before the widget sees the event.
+ * Wraps any widget (Silk's own or an Android one) and detects long-press
+ * itself, because widgets eat their own touches.
+ *
+ * It always claims the touch (so plain Silk widgets still get MOVE/UP and
+ * never stay pressed), presses in only once it is clearly a tap, and gives up
+ * the long-press as soon as the finger moves or a child list starts scrolling.
  */
 class WidgetFrame(context: Context) : FrameLayout(context) {
 
     var onLongPress: (() -> Unit)? = null
 
     private val timeout = ViewConfiguration.getLongPressTimeout().toLong()
+    private val tapTimeout = ViewConfiguration.getTapTimeout().toLong()
     private val slop = ViewConfiguration.get(context).scaledTouchSlop
     private var downX = 0f
     private var downY = 0f
     private var fired = false
+    private var pressed = false
+
+    private val pressIn = Runnable {
+        pressed = true
+        Motion.scale(this, 0.96f, 900f, 1f)
+    }
+
     private val trigger = Runnable {
         fired = true
         performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-        // Children must stop tracking this gesture.
-        val cancel = MotionEvent.obtain(0, 0, MotionEvent.ACTION_CANCEL, 0f, 0f, 0)
+        // The menu is up: the pager and root must not steal this finger now.
+        parent?.requestDisallowInterceptTouchEvent(true)
+        val now = SystemClock.uptimeMillis()
+        val cancel = MotionEvent.obtain(now, now, MotionEvent.ACTION_CANCEL, downX, downY, 0)
         for (i in 0 until childCount) getChildAt(i).dispatchTouchEvent(cancel)
         cancel.recycle()
         onLongPress?.invoke()
     }
 
-    override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
+    private fun track(ev: MotionEvent) {
         when (ev.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
-                Motion.scale(this, 0.96f, 900f, 1f)
                 fired = false
                 downX = ev.x
                 downY = ev.y
+                removeCallbacks(trigger)
+                removeCallbacks(pressIn)
+                postDelayed(pressIn, tapTimeout)
                 postDelayed(trigger, timeout)
             }
             MotionEvent.ACTION_MOVE ->
-                if (hypot(ev.x - downX, ev.y - downY) > slop) removeCallbacks(trigger)
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                removeCallbacks(trigger)
-                Motion.scale(this, 1f, 500f, 0.55f)
-            }
+                if (!fired && hypot(ev.x - downX, ev.y - downY) > slop) release()
+            MotionEvent.ACTION_POINTER_DOWN -> if (!fired) release()
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> release()
         }
+    }
+
+    private fun release() {
+        removeCallbacks(trigger)
+        removeCallbacks(pressIn)
+        if (pressed) {
+            pressed = false
+            Motion.scale(this, 1f, 500f, 0.55f)
+        }
+    }
+
+    override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
+        track(ev)
         return fired
     }
 
+    /** Reached when no child took the touch (Silk widgets) or after we intercepted. */
     override fun onTouchEvent(ev: MotionEvent): Boolean {
-        if (ev.actionMasked == MotionEvent.ACTION_UP || ev.actionMasked == MotionEvent.ACTION_CANCEL) {
-            removeCallbacks(trigger)
-            Motion.scale(this, 1f, 500f, 0.55f)
-        }
-        return fired || super.onTouchEvent(ev)
+        if (ev.actionMasked != MotionEvent.ACTION_DOWN) track(ev)
+        return true
+    }
+
+    /** A child (e.g. a list widget) started scrolling: not a long-press. */
+    override fun requestDisallowInterceptTouchEvent(disallow: Boolean) {
+        if (disallow && !fired) release()
+        super.requestDisallowInterceptTouchEvent(disallow)
+    }
+
+    override fun onDetachedFromWindow() {
+        release()
+        fired = false
+        Motion.cancel(this)
+        scaleX = 1f
+        scaleY = 1f
+        super.onDetachedFromWindow()
     }
 }
 
@@ -100,8 +141,8 @@ object SilkWidgets {
         t.format24Hour = pattern
         t.setTextColor(Color.WHITE)
         t.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp)
-        t.typeface = Typeface.create("sans-serif", if (light) Typeface.NORMAL else Typeface.BOLD)
-        if (light) t.typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
+        t.typeface = if (light) Typeface.create("sans-serif-light", Typeface.NORMAL)
+            else Typeface.create("sans-serif", Typeface.BOLD)
         t.includeFontPadding = false
         return t
     }
@@ -172,24 +213,41 @@ class BatteryWidget(context: Context) : View(context) {
     private fun update(intent: Intent) {
         val l = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
         val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, 100)
-        level = if (l >= 0 && scale > 0) l * 100 / scale else -1
+        val newLevel = if (l >= 0 && scale > 0) l * 100 / scale else -1
         val status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
-        charging = status == BatteryManager.BATTERY_STATUS_CHARGING ||
+        val newCharging = status == BatteryManager.BATTERY_STATUS_CHARGING ||
             status == BatteryManager.BATTERY_STATUS_FULL
+        // The broadcast also fires for temperature/voltage changes: only redraw when it shows.
+        if (newLevel == level && newCharging == charging) return
+        level = newLevel
+        charging = newCharging
+        label = if (level >= 0) "$level%" else "–"
         invalidate()
     }
 
+    private var label = "–"
+    private var registered = false
+
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
+        if (registered) return
         val sticky = ContextCompat.registerReceiver(
             context, receiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED),
             ContextCompat.RECEIVER_NOT_EXPORTED
         )
+        registered = true
         if (sticky != null) update(sticky)
     }
 
     override fun onDetachedFromWindow() {
-        context.unregisterReceiver(receiver)
+        if (registered) {
+            registered = false
+            try {
+                context.unregisterReceiver(receiver)
+            } catch (e: IllegalArgumentException) {
+                // Already unregistered.
+            }
+        }
         super.onDetachedFromWindow()
     }
 
@@ -211,7 +269,7 @@ class BatteryWidget(context: Context) : View(context) {
             canvas.drawArc(oval, -90f, 360f * level / 100f, false, arc)
         }
         big.textSize = size * 0.30f
-        canvas.drawText(if (level >= 0) "$level%" else "–", cx, cy + big.textSize * 0.35f, big)
+        canvas.drawText(label, cx, cy + big.textSize * 0.35f, big)
         small.textSize = size * 0.15f
         canvas.drawText(if (charging) "Charging" else "Battery", cx, oval.bottom + small.textSize * 1.9f, small)
     }

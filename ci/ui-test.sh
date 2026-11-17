@@ -2,13 +2,13 @@
 # Runs Silk on the emulator and saves screenshots and timings to shots/.
 # Screen is 1080x2400 (pixel_6 profile).
 set -x
+fail() { echo "FAIL: $*"; exit 1; }
 mkdir -p shots
 shot() { sleep "${2:-1}"; adb exec-out screencap -p > "shots/$1.png"; }
 
-adb install -r Silk.apk
+adb install -r Silk.apk || fail "install"
 adb shell cmd role add-role-holder --user 0 android.app.role.HOME dev.giorgi.silk 0
 adb shell cmd package set-home-activity dev.giorgi.silk/.LauncherActivity
-adb shell pm grant dev.giorgi.silk android.permission.READ_MEDIA_IMAGES
 adb shell appops set --uid dev.giorgi.silk MANAGE_EXTERNAL_STORAGE allow
 adb logcat -c
 adb shell input keyevent KEYCODE_HOME
@@ -64,5 +64,7 @@ adb shell input keyevent KEYCODE_HOME
 shot 09-cold-start-1s 1
 
 adb logcat -d -v time -s Silk:V AndroidRuntime:E ActivityManager:I > shots/logcat.txt
+adb logcat -d -b crash > shots/crash.txt || true
 adb shell dumpsys window windows | grep -i "mCurrentFocus" >> shots/logcat.txt
+if grep -q "FATAL EXCEPTION" shots/logcat.txt; then fail "app crashed"; fi
 exit 0

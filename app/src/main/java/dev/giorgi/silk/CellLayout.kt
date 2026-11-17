@@ -25,27 +25,32 @@ class CellLayout(context: Context, private val cols: Int, private val rows: Int)
     private var cellH = 0
     private val widgetMargin = context.dp(8)
 
-    val cellWidth get() = cellW
-    val cellHeight get() = cellH
-
     fun addAt(child: View, cellX: Int, cellY: Int, spanX: Int = 1, spanY: Int = 1, fill: Boolean = false) {
         addView(child, CellParams(cellX, cellY, spanX, spanY, fill))
     }
 
     override fun checkLayoutParams(p: ViewGroup.LayoutParams?): Boolean = p is CellParams
+    override fun generateLayoutParams(p: ViewGroup.LayoutParams?): ViewGroup.LayoutParams = CellParams(0, 0)
+    override fun generateDefaultLayoutParams(): ViewGroup.LayoutParams = CellParams(0, 0)
+
+    /**
+     * Pages fade while swiping. Cells never overlap, so HWUI can apply the
+     * alpha per child instead of rendering the whole page offscreen.
+     */
+    override fun hasOverlappingRendering(): Boolean = false
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         val width = MeasureSpec.getSize(widthMeasureSpec)
         val height = MeasureSpec.getSize(heightMeasureSpec)
-        cellW = (width - paddingLeft - paddingRight) / cols
-        cellH = (height - paddingTop - paddingBottom) / rows
+        cellW = ((width - paddingLeft - paddingRight) / cols).coerceAtLeast(0)
+        cellH = ((height - paddingTop - paddingBottom) / rows).coerceAtLeast(0)
         for (i in 0 until childCount) {
             val child = getChildAt(i)
             val lp = child.layoutParams as CellParams
             if (lp.fill) {
                 child.measure(
-                    MeasureSpec.makeMeasureSpec(cellW * lp.spanX - 2 * widgetMargin, MeasureSpec.EXACTLY),
-                    MeasureSpec.makeMeasureSpec(cellH * lp.spanY - 2 * widgetMargin, MeasureSpec.EXACTLY),
+                    MeasureSpec.makeMeasureSpec((cellW * lp.spanX - 2 * widgetMargin).coerceAtLeast(0), MeasureSpec.EXACTLY),
+                    MeasureSpec.makeMeasureSpec((cellH * lp.spanY - 2 * widgetMargin).coerceAtLeast(0), MeasureSpec.EXACTLY),
                 )
             } else {
                 child.measure(

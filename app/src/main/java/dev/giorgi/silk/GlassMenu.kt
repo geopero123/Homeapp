@@ -5,6 +5,7 @@ import android.graphics.Typeface
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.StateListDrawable
 import android.util.TypedValue
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -21,8 +22,16 @@ class GlassMenu(private val root: FrameLayout) {
 
     var onShowingChanged: ((Boolean) -> Unit)? = null
 
-    private var overlay: FrameLayout? = null
+    /** While it fades out, the overlay lets every touch through to the home screen. */
+    private class Overlay(ctx: android.content.Context) : FrameLayout(ctx) {
+        var passThrough = false
+        override fun dispatchTouchEvent(ev: MotionEvent): Boolean =
+            if (passThrough) false else super.dispatchTouchEvent(ev)
+    }
+
+    private var overlay: Overlay? = null
     private var card: View? = null
+    private var dim: View? = null
 
     val isShowing: Boolean get() = overlay != null
 
@@ -30,11 +39,16 @@ class GlassMenu(private val root: FrameLayout) {
         dismiss(immediate = true)
         val ctx = root.context
 
-        val ov = FrameLayout(ctx)
+        val ov = Overlay(ctx)
         ov.isClickable = true
-        ov.setBackgroundColor(0x40000000)
-        ov.alpha = 0f
         ov.setOnClickListener { dismiss() }
+        // The dim is its own single-draw view, so fading it costs no offscreen pass.
+        val dimView = object : View(ctx) {
+            override fun hasOverlappingRendering() = false
+        }
+        dimView.setBackgroundColor(0x40000000)
+        dimView.alpha = 0f
+        ov.addView(dimView, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
 
         val list = LinearLayout(ctx)
         list.orientation = LinearLayout.VERTICAL
@@ -62,6 +76,7 @@ class GlassMenu(private val root: FrameLayout) {
                 addState(intArrayOf(android.R.attr.state_pressed), ColorDrawable(0x26FFFFFF))
             }
             row.setOnClickListener {
+                if (overlay !== ov) return@setOnClickListener // already closing: never run twice
                 dismiss()
                 action()
             }
@@ -75,7 +90,7 @@ class GlassMenu(private val root: FrameLayout) {
 
         val c = FrameLayout(ctx)
         c.isClickable = true
-        c.background = LiquidGlass(c, ctx.dpf(20f), darkness = 0.38f)
+        c.background = LiquidGlass(c, ctx.dpf(20f), darkness = 0.38f, followsPager = false)
         c.clipToOutline = true
         c.addView(scroll)
 
@@ -100,7 +115,7 @@ class GlassMenu(private val root: FrameLayout) {
             val ax = a[0] - r[0]
             val ay = a[1] - r[1]
             val centerX = ax + anchor.width / 2
-            x = (centerX - width / 2).coerceIn(margin, root.width - width - margin)
+            x = (centerX - width / 2).coerceIn(margin, (root.width - width - margin).coerceAtLeast(margin))
             y = ay + anchor.height + ctx.dp(8)
             pivotY = 0f
             if (y + h > root.height - ctx.dp(24)) {
@@ -129,26 +144,29 @@ class GlassMenu(private val root: FrameLayout) {
         c.alpha = 0f
         Motion.scale(c, 1f, 650f, 0.72f)
         Motion.spring(c, DynamicAnimation.ALPHA, 1f, 900f, 1f)
-        Motion.spring(ov, DynamicAnimation.ALPHA, 1f, 600f, 1f)
+        Motion.spring(dimView, DynamicAnimation.ALPHA, 1f, 600f, 1f)
 
         overlay = ov
         card = c
+        dim = dimView
         onShowingChanged?.invoke(true)
     }
 
     fun dismiss(immediate: Boolean = false) {
         val ov = overlay ?: return
         val c = card
+        val d = dim
         overlay = null
         card = null
+        dim = null
         onShowingChanged?.invoke(false)
         if (immediate || c == null) {
             root.removeView(ov)
             return
         }
-        ov.isClickable = false
+        ov.passThrough = true
         Motion.scale(c, 0.7f, 900f, 1f)
         Motion.spring(c, DynamicAnimation.ALPHA, 0f, 900f, 1f)
-        Motion.spring(ov, DynamicAnimation.ALPHA, 0f, 700f, 1f) { root.removeView(ov) }
+        Motion.spring(d ?: ov, DynamicAnimation.ALPHA, 0f, 700f, 1f) { root.removeView(ov) }
     }
 }

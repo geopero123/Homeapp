@@ -7,8 +7,9 @@ import android.graphics.Paint
 import android.graphics.RectF
 import android.view.View
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
-/** iOS-style page dots on a small glass capsule; the current dot follows the swipe. */
+/** iOS-style page dots on a small glass capsule; shows at most 11 dots around the current page. */
 class PageIndicator(context: Context) : View(context) {
 
     private val dot = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE }
@@ -18,6 +19,7 @@ class PageIndicator(context: Context) : View(context) {
     private val padH = context.dpf(12f)
     private val capsuleH = context.dpf(24f)
     private val rect = RectF()
+    private val maxDots = 11
 
     var count = 1
         set(value) {
@@ -33,15 +35,17 @@ class PageIndicator(context: Context) : View(context) {
 
     override fun onDraw(canvas: Canvas) {
         if (count <= 1) return
-        val dotsW = gap * (count - 1)
+        val n = minOf(count, maxDots)
+        val first = (position.roundToInt() - n / 2).coerceIn(0, count - n)
+        val dotsW = gap * (n - 1)
         val cy = height / 2f
         rect.set(width / 2f - dotsW / 2 - padH, cy - capsuleH / 2, width / 2f + dotsW / 2 + padH, cy + capsuleH / 2)
         canvas.drawRoundRect(rect, capsuleH / 2, capsuleH / 2, capsule)
         val startX = width / 2f - dotsW / 2f
-        for (i in 0 until count) {
-            val closeness = (1f - abs(position - i)).coerceIn(0f, 1f)
+        for (k in 0 until n) {
+            val closeness = (1f - abs(position - (first + k))).coerceIn(0f, 1f)
             dot.alpha = (100 + 155 * closeness).toInt()
-            canvas.drawCircle(startX + i * gap, cy, radius, dot)
+            canvas.drawCircle(startX + k * gap, cy, radius, dot)
         }
     }
 }

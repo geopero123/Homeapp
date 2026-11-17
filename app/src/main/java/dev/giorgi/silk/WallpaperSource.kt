@@ -8,7 +8,6 @@ import android.graphics.BitmapShader
 import android.graphics.Canvas
 import android.graphics.ImageDecoder
 import android.graphics.Matrix
-import android.graphics.Paint
 import android.graphics.Rect
 import android.graphics.Shader
 import android.graphics.drawable.BitmapDrawable
@@ -22,6 +21,7 @@ import android.view.WindowManager
 import java.io.File
 import java.util.Collections
 import java.util.WeakHashMap
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.Executors
 import kotlin.math.max
 import kotlin.math.min
@@ -57,7 +57,7 @@ object WallpaperSource {
     private val io = Executors.newSingleThreadExecutor()
     private val main = Handler(Looper.getMainLooper())
     private val glasses: MutableSet<LiquidGlass> = Collections.newSetFromMap(WeakHashMap())
-    private val listeners = ArrayList<() -> Unit>()
+    private val listeners = CopyOnWriteArrayList<() -> Unit>()
     private var watching = false
 
     fun register(glass: LiquidGlass) {
@@ -68,9 +68,18 @@ object WallpaperSource {
         listeners += listener
     }
 
+    fun removeListener(listener: () -> Unit) {
+        listeners -= listener
+    }
+
     /** Redraws every glass panel, e.g. while a page scrolls under the wallpaper. */
     fun invalidateAll() {
         for (g in glasses.toList()) g.invalidateSelf()
+    }
+
+    /** Only glass riding on the home pager moves over the wallpaper while paging. */
+    fun invalidatePagerGlass() {
+        for (g in glasses) if (g.followsPager && g.isHostAttached) g.invalidateSelf()
     }
 
     fun start(context: Context, done: (() -> Unit)? = null) {
@@ -91,7 +100,7 @@ object WallpaperSource {
             val src = readSystem(app) ?: readSaved(app)
             val built = try {
                 src?.let { build(app, it) }
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 Log.w(TAG, "wallpaper blur failed", e)
                 null
             }
@@ -132,9 +141,10 @@ object WallpaperSource {
                 File(app.filesDir, "wallpaper.jpg").outputStream().use {
                     bmp.compress(Bitmap.CompressFormat.JPEG, 92, it)
                 }
-                WallpaperManager.getInstance(app).setBitmap(bmp, null, true, WallpaperManager.FLAG_SYSTEM)
+                val id = WallpaperManager.getInstance(app).setBitmap(bmp, null, true, WallpaperManager.FLAG_SYSTEM)
+                app.getSharedPreferences("silk", Context.MODE_PRIVATE).edit().putInt("savedWallpaperId", id).apply()
                 true
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 Log.w(TAG, "could not use photo", e)
                 false
             }
@@ -157,7 +167,16 @@ object WallpaperSource {
 
     private fun readSaved(context: Context): Bitmap? {
         val f = File(context.filesDir, "wallpaper.jpg")
-        return if (f.exists()) BitmapFactory.decodeFile(f.path) else null
+        if (!f.exists()) return null
+        // If the wallpaper was changed in Samsung settings since, our copy is no longer what's on screen.
+        val saved = context.getSharedPreferences("silk", Context.MODE_PRIVATE).getInt("savedWallpaperId", -1)
+        val current = try {
+            WallpaperManager.getInstance(context).getWallpaperId(WallpaperManager.FLAG_SYSTEM)
+        } catch (e: Exception) {
+            saved
+        }
+        if (saved != -1 && current != -1 && saved != current) return null
+        return BitmapFactory.decodeFile(f.path)
     }
 
     private fun toSoftware(d: Drawable): Bitmap? {
@@ -186,15 +205,19 @@ object WallpaperSource {
         val cropH = (h / scale).toInt()
         val left = (src.width - cropW) / 2
         val top = (src.height - cropH) / 2
-        val crop = Rect(left, top, left + cropW, top + cropH)
-        val paint = Paint(Paint.FILTER_BITMAP_FLAG)
+        val crop = Rect(left, top, left + cropW.coerceAtLeast(1), top + cropH.coerceAtLeast(1))
+        val cropped = Bitmap.createBitmap(src, crop.left, crop.top, crop.width(), crop.height())
 
+        // Halve in steps: bilinear at exactly 2x is a true 2x2 average, so no shimmer/aliasing.
         fun shrink(f: Float): Bitmap {
-            val out = Bitmap.createBitmap(
-                (w / f).toInt().coerceAtLeast(1), (h / f).toInt().coerceAtLeast(1), Bitmap.Config.ARGB_8888
-            )
-            Canvas(out).drawBitmap(src, crop, Rect(0, 0, out.width, out.height), paint)
-            return out
+            val tw = (w / f).toInt().coerceAtLeast(1)
+            val th = (h / f).toInt().coerceAtLeast(1)
+            var cur = cropped
+            while (cur.width >= tw * 2 && cur.height >= th * 2) {
+                cur = Bitmap.createScaledBitmap(cur, cur.width / 2, cur.height / 2, true)
+            }
+            val out = Bitmap.createScaledBitmap(cur, tw, th, true)
+            return if (out.config == Bitmap.Config.ARGB_8888) out else out.copy(Bitmap.Config.ARGB_8888, false)
         }
         return boxBlur(shrink(GLASS_SCALE), 3) to boxBlur(shrink(HEAVY_SCALE), 5)
     }
