@@ -72,6 +72,13 @@ class LauncherActivity : ComponentActivity() {
     /** Set while the "All files access" settings screen is open; re-read the wallpaper on return. */
     private var awaitingFileAccess = false
 
+    /** Android widget views, kept so a page rebind doesn't recreate them. */
+    private val widgetViews = HashMap<Int, AppWidgetHostView>()
+
+    /** The Android widget being added while the bind/configure screens are open. */
+    private var pendingWidgetId = -1
+    private var pendingWidgetInfo: AppWidgetProviderInfo? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
