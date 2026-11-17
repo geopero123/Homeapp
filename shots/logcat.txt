@@ -1,0 +1,208 @@
+--------- beginning of system
+11-17 11:46:25.567 W/ActivityManager(  482): Receiver with filter android.content.IntentFilter@c949fdd already registered for pid 2509, callerPackage is com.google.android.ims
+11-17 11:46:25.634 I/ActivityManager(  482): Start proc 3202:com.android.carrierdefaultapp/u0a88 for broadcast {com.android.carrierdefaultapp/com.android.carrierdefaultapp.CarrierDefaultBroadcastReceiver}
+11-17 11:46:25.682 I/ActivityManager(  482): Start proc 3205:dev.giorgi.silk/u0a174 for next-activity {dev.giorgi.silk/dev.giorgi.silk.LauncherActivity}
+11-17 11:46:25.959 I/ActivityManager(  482): Start proc 3252:com.google.android.projection.gearhead:car/u0a108 for broadcast {com.google.android.projection.gearhead/com.google.android.apps.auto.carservice.gmscorecompatstub.StubWirelessUuidRegistrationReceiver}
+--------- beginning of main
+11-17 11:46:27.078 I/Silk    ( 3205): reload: 18 apps, 18 icons rendered, 718 ms
+11-17 11:46:27.577 I/Silk    ( 3205): wallpaper glass: ready
+11-17 11:46:27.675 I/Silk    ( 3205): reload: 18 apps, 0 icons rendered, 229 ms
+11-17 11:46:28.135 I/Silk    ( 3205): reload: 18 apps, 0 icons rendered, 114 ms
+11-17 11:46:28.709 I/ActivityManager(  482): Background started FGS: Allowed [callingPackage: com.google.android.apps.messaging; callingUid: 10111; uidState: BFGS; intent: Intent { cmp=com.google.android.apps.messaging/com.google.apps.tiktok.concurrent.InternalForegroundService (has extras) }; code:PROC_STATE_BFGS; tempAllowListReason:<null>; targetSdkVersion:33; callerTargetSdkVersion:33; startForegroundCount:0; bindFromPackage:null]
+11-17 11:46:28.711 W/ActivityManager(  482): Foreground service started from background can not have location/camera/microphone access: service com.google.android.apps.messaging/com.google.apps.tiktok.concurrent.InternalForegroundService
+11-17 11:46:29.360 I/Silk    ( 3205): reload: 18 apps, 0 icons rendered, 13 ms
+11-17 11:46:29.370 I/Silk    ( 3205): reload: 18 apps, 0 icons rendered, 10 ms
+11-17 11:46:29.498 I/ActivityManager(  482): Start proc 3414:com.google.android.webview:webview_service/u0a124 for service {com.google.android.webview/org.chromium.android_webview.services.VariationsSeedServer}
+11-17 11:46:29.678 I/ActivityManager(  482): Start proc 3446:com.android.providers.calendar/u0a83 for broadcast {com.android.providers.calendar/com.android.providers.calendar.CalendarUpgradeReceiver}
+11-17 11:46:30.250 I/ActivityManager(  482): Start proc 3511:com.android.remoteprovisioner/u0a151 for service {com.android.remoteprovisioner/com.android.remoteprovisioner.service.GenerateRkpKeyService}
+11-17 11:46:30.754 W/ActivityManager(  482): Unable to start service Intent { act=com.google.android.gms.home.service.START pkg=com.google.android.gms } U=0: not found
+11-17 11:46:30.755 W/ActivityManager(  482): Unbind failed: could not find connection for android.os.BinderProxy@e136b82
+11-17 11:46:31.012 I/ActivityManager(  482): Start proc 3567:com.android.externalstorage/u0a72 for broadcast {com.android.externalstorage/com.android.externalstorage.MountReceiver}
+11-17 11:46:31.188 I/ActivityManager(  482): Start proc 3587:com.google.android.apps.photos/u0a140 for broadcast {com.google.android.apps.photos/com.google.android.apps.photos.sdcard.envcache.ExternalStorageStateChangeBroadcastReceiver}
+11-17 11:46:31.210 I/Silk    ( 3205): reload: 18 apps, 0 icons rendered, 2 ms
+11-17 11:46:31.360 I/Silk    ( 3205): reload: 18 apps, 0 icons rendered, 6 ms
+11-17 11:46:31.508 I/Silk    ( 3205): reload: 18 apps, 0 icons rendered, 1 ms
+11-17 11:46:31.531 I/ActivityManager(  482): com.google.android.packageinstaller is exempt from freezer
+11-17 11:46:31.539 I/ActivityManager(  482): Start proc 3632:com.google.android.packageinstaller/u0a81 for broadcast {com.google.android.packageinstaller/com.android.packageinstaller.PackageInstalledReceiver}
+11-17 11:46:31.616 I/Silk    ( 3205): reload: 18 apps, 0 icons rendered, 2 ms
+11-17 11:46:31.622 I/Silk    ( 3205): reload: 18 apps, 0 icons rendered, 3 ms
+11-17 11:46:31.660 I/Silk    ( 3205): reload: 18 apps, 0 icons rendered, 4 ms
+11-17 11:46:31.795 I/Silk    ( 3205): reload: 18 apps, 0 icons rendered, 15 ms
+11-17 11:46:31.841 I/Silk    ( 3205): reload: 18 apps, 0 icons rendered, 45 ms
+11-17 11:46:32.028 I/ActivityManager(  482): Start proc 3690:com.google.android.settings.intelligence/u0a107 for broadcast {com.google.android.settings.intelligence/com.google.android.settings.intelligence.modules.contextualcards.impl.JobBootBroadcastReceiver}
+11-17 11:46:32.111 I/Silk    ( 3205): reload: 18 apps, 0 icons rendered, 25 ms
+11-17 11:46:32.649 I/ActivityManager(  482): Start proc 3755:com.google.android.documentsui/u0a85 for broadcast {com.google.android.documentsui/com.android.documentsui.PreBootReceiver}
+11-17 11:46:33.083 I/ActivityManager(  482): Start proc 3793:com.google.android.apps.docs/u0a123 for content provider {com.google.android.apps.docs/com.google.android.apps.docs.storagebackend.StorageBackendContentProvider}
+11-17 11:46:33.741 I/ActivityManager(  482): Posting BOOT_COMPLETED user #0
+11-17 11:46:33.773 W/ActivityManager(  482): UserLifecycleEvent 6 received without an active userJourneySession.
+11-17 11:46:33.879 W/ActivityManager(  482): Slow operation: 78ms so far, now at startProcess: done updating battery stats
+11-17 11:46:33.880 W/ActivityManager(  482): Slow operation: 78ms so far, now at startProcess: building log message
+11-17 11:46:33.880 I/ActivityManager(  482): Start proc 3866:com.android.traceur/u0a102 for broadcast {com.android.traceur/com.android.traceur.Receiver}
+11-17 11:46:33.880 W/ActivityManager(  482): Slow operation: 78ms so far, now at startProcess: starting to update pids map
+11-17 11:46:33.880 W/ActivityManager(  482): Slow operation: 79ms so far, now at startProcess: done updating pids map
+11-17 11:46:34.571 I/Silk    ( 3205): wallpaper glass: ready
+11-17 11:46:34.878 I/ActivityManager(  482): Start proc 3951:com.google.android.calendar/u0a122 for broadcast {com.google.android.calendar/com.google.android.calendar.SyncUpgradeReceiver}
+11-17 11:46:35.315 I/ActivityManager(  482): Start proc 4020:com.android.camera2/u0a143 for broadcast {com.android.camera2/com.android.camera.SetActivitiesCameraReceiver}
+11-17 11:46:35.439 I/ActivityManager(  482): Start proc 4043:com.android.dynsystem/1000 for broadcast {com.android.dynsystem/com.android.dynsystem.BootCompletedReceiver}
+11-17 11:46:35.494 I/ActivityManager(  482): Start proc 4063:com.android.dynsystem:dynsystem/1000 for service {com.android.dynsystem/com.android.dynsystem.DynamicSystemInstallationService}
+11-17 11:46:35.589 I/ActivityManager(  482): Start proc 4080:com.android.nfc/1027 for broadcast {com.android.nfc/com.android.nfc.NfcBootCompletedReceiver}
+11-17 11:46:35.951 I/ActivityManager(  482): Killing 4080:com.android.nfc/1027 (adj 0): change com.android.nfc
+11-17 11:46:36.355 I/Silk    ( 3205): reload: 18 apps, 0 icons rendered, 15 ms
+11-17 11:46:36.608 I/ActivityManager(  482): com.android.shell is exempt from freezer
+11-17 11:46:36.621 I/ActivityManager(  482): Start proc 4140:com.android.shell/2000 for broadcast {com.android.shell/com.android.shell.HeapDumpReceiver}
+11-17 11:46:37.000 I/ActivityManager(  482): Start proc 4174:com.google.android.apps.maps/u0a139 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.geofence.RestartDetectionBroadcastReceiver}
+11-17 11:46:37.940 W/ActivityManager(  482): Unable to start service Intent { cmp=com.google.android.projection.gearhead/com.google.android.apps.auto.carservice.service.impl.GearheadCarStartupService } U=0: not found
+11-17 11:46:37.963 W/ActivityManager(  482): Unbind failed: could not find connection for android.os.BinderProxy@1d75d0e
+11-17 11:46:38.787 I/ActivityManager(  482): reportOnUserCompletedEvent(0): stored=10, eligible=111
+11-17 11:46:39.253 I/Silk    ( 3205): reload: 18 apps, 0 icons rendered, 186 ms
+11-17 11:46:39.257 I/Silk    ( 3205): reload: 18 apps, 0 icons rendered, 3 ms
+11-17 11:46:39.330 I/Silk    ( 3205): reload: 18 apps, 0 icons rendered, 26 ms
+11-17 11:46:39.397 I/Silk    ( 3205): reload: 18 apps, 0 icons rendered, 48 ms
+11-17 11:46:39.513 I/ActivityManager(  482): Start proc 4271:com.google.android.apps.maps:server_recovery_process/u0a139 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-17 11:46:39.549 I/Silk    ( 3205): reload: 18 apps, 0 icons rendered, 12 ms
+11-17 11:46:39.598 I/Silk    ( 3205): reload: 18 apps, 0 icons rendered, 4 ms
+11-17 11:46:39.632 I/Silk    ( 3205): reload: 18 apps, 0 icons rendered, 4 ms
+11-17 11:46:42.046 I/ActivityManager(  482): Start proc 4452:com.google.android.apps.wallpaper/u0a153 for broadcast {com.google.android.apps.wallpaper/com.android.wallpaper.module.RotationWallpaperUpdateReceiver}
+11-17 11:46:43.475 I/ActivityManager(  482): Background started FGS: Allowed [callingPackage: com.google.android.apps.wellbeing; callingUid: 10113; uidState: RCVR; intent: Intent { cmp=com.google.android.apps.wellbeing/com.google.apps.tiktok.concurrent.InternalForegroundService (has extras) }; code:BACKGROUND_ACTIVITY_PERMISSION; tempAllowListReason:<broadcast:1000:android.intent.action.BOOT_COMPLETED,reason:,reasonCode:BOOT_COMPLETED,duration:20000,callingUid:1000>; targetSdkVersion:33; callerTargetSdkVersion:33; startForegroundCount:0; bindFromPackage:null]
+11-17 11:46:44.106 I/ActivityManager(  482): Start proc 4525:com.google.android.configupdater/u0a103 for broadcast {com.google.android.configupdater/com.google.android.configupdater.MainReceiver}
+11-17 11:46:44.527 I/ActivityManager(  482): Killing 2361:com.google.android.gm/u0a144 (adj 0): change com.google.android.gm
+11-17 11:46:44.563 W/ActivityManager(  482): ProcessRecord{941cda6 0:com.google.android.gm/u0a144} is attached to a previous process 2361
+11-17 11:46:44.618 W/ActivityManager(  482): Slow operation: 55ms so far, now at startProcess: done updating battery stats
+11-17 11:46:44.619 W/ActivityManager(  482): Slow operation: 55ms so far, now at startProcess: building log message
+11-17 11:46:44.619 I/ActivityManager(  482): Start proc 4579:com.google.android.gm/u0a144 for broadcast {com.google.android.gm/com.google.android.libraries.internal.growth.growthkit.tiktok.GrowthKitBootCompletedListener_Receiver}
+11-17 11:46:44.619 W/ActivityManager(  482): Slow operation: 56ms so far, now at startProcess: starting to update pids map
+11-17 11:46:44.621 W/ActivityManager(  482): Slow operation: 58ms so far, now at startProcess: done updating pids map
+11-17 11:46:44.739 I/Silk    ( 3205): reload: 18 apps, 0 icons rendered, 2 ms
+11-17 11:46:46.322 I/ActivityManager(  482): Start proc 4690:com.google.android.googlequicksearchbox/u0a119 for broadcast {com.google.android.googlequicksearchbox/com.google.android.libraries.phenotype.client.stable.PhenotypeUpdateBackgroundBroadcastReceiver}
+11-17 11:46:48.046 I/Silk    ( 3205): reload: 18 apps, 0 icons rendered, 5 ms
+11-17 11:46:48.139 I/Silk    ( 3205): reload: 18 apps, 0 icons rendered, 3 ms
+11-17 11:46:48.144 I/ActivityManager(  482): Background started FGS: Allowed [callingPackage: com.google.android.googlequicksearchbox; callingUid: 10119; uidState: BFGS; intent: Intent { cmp=com.google.android.googlequicksearchbox/com.google.android.libraries.mdi.download.foreground.sting.ForegroundDownloadService (has extras) }; code:ACTIVITY_STARTER; tempAllowListReason:<broadcast:1000:android.intent.action.BOOT_COMPLETED,reason:,reasonCode:BOOT_COMPLETED,duration:20000,callingUid:1000>; targetSdkVersion:31; callerTargetSdkVersion:31; startForegroundCount:0; bindFromPackage:null]
+11-17 11:46:48.208 I/Silk    ( 3205): reload: 18 apps, 0 icons rendered, 2 ms
+11-17 11:46:48.247 I/ActivityManager(  482): Start proc 4754:com.google.android.onetimeinitializer/u0a110 for broadcast {com.google.android.onetimeinitializer/com.google.android.onetimeinitializer.OneTimeInitializerReceiver}
+11-17 11:46:48.365 I/Silk    ( 3205): reload: 18 apps, 0 icons rendered, 2 ms
+11-17 11:46:48.419 I/Silk    ( 3205): reload: 18 apps, 0 icons rendered, 2 ms
+11-17 11:46:48.444 I/ActivityManager(  482): Killing 789:com.google.android.permissioncontroller/u0a170 (adj 0): change com.google.android.permissioncontroller
+11-17 11:46:48.462 W/ActivityManager(  482): Scheduling restart of crashed service com.google.android.permissioncontroller/com.android.permissioncontroller.permission.service.PermissionControllerServiceImpl in 10000ms for connection
+11-17 11:46:48.462 W/ActivityManager(  482): Scheduling restart of crashed service com.google.android.permissioncontroller/com.android.permissioncontroller.role.service.RoleControllerServiceImpl in 29989ms for connection
+11-17 11:46:48.468 W/ActivityManager(  482): ProcessRecord{a76c688 0:com.google.android.permissioncontroller/u0a170} is attached to a previous process 789
+11-17 11:46:48.489 E/ActivityManager(  482): Cannot find package for uid: 1013
+11-17 11:46:48.580 W/ActivityManager(  482): Slow operation: 112ms so far, now at startProcess: asking zygote to start proc
+11-17 11:46:48.599 W/ActivityManager(  482): Slow operation: 129ms so far, now at startProcess: returned from zygote!
+11-17 11:46:48.599 W/ActivityManager(  482): Slow operation: 131ms so far, now at startProcess: done updating battery stats
+11-17 11:46:48.599 W/ActivityManager(  482): Slow operation: 131ms so far, now at startProcess: building log message
+11-17 11:46:48.599 I/ActivityManager(  482): Start proc 4789:com.google.android.permissioncontroller/u0a170 for broadcast {com.google.android.permissioncontroller/com.android.permissioncontroller.safetycenter.service.SafetyCenterBackgroundRefreshJobService$SetupSafetyCenterBackgroundRefreshReceiver}
+11-17 11:46:48.599 W/ActivityManager(  482): Slow operation: 131ms so far, now at startProcess: starting to update pids map
+11-17 11:46:48.599 W/ActivityManager(  482): Slow operation: 131ms so far, now at startProcess: done updating pids map
+11-17 11:46:48.621 I/Silk    ( 3205): reload: 18 apps, 0 icons rendered, 2 ms
+11-17 11:46:48.656 I/Silk    ( 3205): reload: 18 apps, 0 icons rendered, 3 ms
+11-17 11:46:48.736 I/Silk    ( 3205): reload: 18 apps, 0 icons rendered, 1 ms
+11-17 11:46:48.768 I/Silk    ( 3205): reload: 18 apps, 0 icons rendered, 14 ms
+11-17 11:46:48.818 I/ActivityManager(  482): Start proc 4813:com.google.android.projection.gearhead:shared/u0a108 for broadcast {com.google.android.projection.gearhead/com.google.android.apps.auto.components.app.fzero.FzeroReceiver}
+11-17 11:46:48.957 I/Silk    ( 3205): reload: 18 apps, 0 icons rendered, 4 ms
+11-17 11:46:49.040 I/ActivityManager(  482): Killing 3690:com.google.android.settings.intelligence/u0a107 (adj 0): change com.google.android.settings.intelligence
+11-17 11:46:49.065 W/ActivityManager(  482): ProcessRecord{b2b6452 0:com.google.android.settings.intelligence/u0a107} is attached to a previous process 3690
+11-17 11:46:49.092 I/ActivityManager(  482): Killing 0:com.google.android.settings.intelligence/u0a107 (adj -10000): change com.google.android.settings.intelligence
+11-17 11:46:49.100 W/ActivityManager(  482): ProcessRecord{6c3243c 0:com.google.android.settings.intelligence/u0a107} start not valid, killing pid=4845, killedByAm=true;No entry in mProcessNames;pendingStart=false;
+11-17 11:46:49.132 I/ActivityManager(  482): Start proc 4866:com.google.android.settings.intelligence/u0a107 for broadcast {com.google.android.settings.intelligence/com.google.android.settings.intelligence.modules.contextualcards.impl.JobBootBroadcastReceiver}
+11-17 11:46:50.213 I/ActivityManager(  482): Finished processing BOOT_COMPLETED for u0
+11-17 11:46:51.189 I/ActivityManager(  482): Start proc 4949:com.android.emergency/u0a156 for content provider {com.android.emergency/com.android.emergency.EmergencySearchIndexablesProvider}
+11-17 11:46:51.199 I/ActivityManager(  482): Start proc 4960:com.google.android.gms.ui/u0a120 for content provider {com.google.android.gms/com.google.android.gms.app.search.GmsSearchIndexablesProvider}
+11-17 11:46:51.287 I/ActivityManager(  482): Start proc 4986:com.google.android.marvin.talkback/u0a145 for content provider {com.google.android.marvin.talkback/com.google.android.accessibility.talkback.preference.search.TalkBackSearchIndexablesProvider}
+11-17 11:46:55.067 W/ActivityManager(  482): Unable to start service Intent { act=com.google.android.play.core.splitinstall.BIND_SPLIT_INSTALL_SERVICE pkg=com.android.vending } U=0: not found
+11-17 11:46:57.391 I/ActivityManager(  482): Background started FGS: Allowed [callingPackage: com.google.android.inputmethod.latin; callingUid: 10134; uidState: IMPB; intent: Intent { cmp=com.google.android.inputmethod.latin/com.google.android.apps.inputmethod.libs.dataservice.superpacks.SuperpacksForegroundTaskService }; code:BOOT_COMPLETED; tempAllowListReason:<broadcast:1000:android.intent.action.BOOT_COMPLETED,reason:,reasonCode:BOOT_COMPLETED,duration:20000,callingUid:1000>; targetSdkVersion:33; callerTargetSdkVersion:33; startForegroundCount:0; bindFromPackage:null]
+11-17 11:46:57.400 W/ActivityManager(  482): Foreground service started from background can not have location/camera/microphone access: service com.google.android.inputmethod.latin/com.google.android.apps.inputmethod.libs.dataservice.superpacks.SuperpacksForegroundTaskService
+11-17 11:47:00.658 I/Silk    ( 3205): reload: 18 apps, 0 icons rendered, 7 ms
+11-17 11:47:00.717 I/Silk    ( 3205): reload: 18 apps, 0 icons rendered, 9 ms
+11-17 11:47:00.721 I/Silk    ( 3205): reload: 18 apps, 0 icons rendered, 1 ms
+11-17 11:47:00.726 I/Silk    ( 3205): reload: 18 apps, 0 icons rendered, 2 ms
+11-17 11:47:04.132 I/ActivityManager(  482): Process com.google.android.apps.maps:server_recovery_process (pid 4271) has died: fg  RCVR
+11-17 11:47:04.286 I/ActivityManager(  482): Start proc 5307:com.google.android.apps.maps:server_recovery_process/u0a139 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-17 11:47:05.241 I/ActivityManager(  482): Process com.google.android.apps.maps:server_recovery_process (pid 5307) has died: fg  RCVR
+11-17 11:47:05.377 I/ActivityManager(  482): Start proc 5354:com.google.android.apps.maps:server_recovery_process/u0a139 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-17 11:47:05.675 I/Silk    ( 3205): reload: 18 apps, 0 icons rendered, 63 ms
+11-17 11:47:06.037 I/ActivityManager(  482): Process com.google.android.apps.maps:server_recovery_process (pid 5354) has died: fg  RCVR
+11-17 11:47:06.108 I/ActivityManager(  482): Start proc 5379:com.google.android.apps.maps:server_recovery_process/u0a139 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-17 11:47:06.179 I/ActivityManager(  482): Process com.google.android.apps.maps:server_recovery_process (pid 5379) has died: fg  RCVR
+11-17 11:47:06.195 I/ActivityManager(  482): Start proc 5397:com.google.android.apps.maps:server_recovery_process/u0a139 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-17 11:47:06.242 I/ActivityManager(  482): Process com.google.android.apps.maps:server_recovery_process (pid 5397) has died: fg  RCVR
+11-17 11:47:06.256 I/ActivityManager(  482): Start proc 5415:com.google.android.apps.maps:server_recovery_process/u0a139 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-17 11:47:06.298 I/ActivityManager(  482): Process com.google.android.apps.maps:server_recovery_process (pid 5415) has died: fg  RCVR
+11-17 11:47:06.314 I/ActivityManager(  482): Start proc 5433:com.google.android.apps.maps:server_recovery_process/u0a139 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-17 11:47:06.361 I/ActivityManager(  482): Process com.google.android.apps.maps:server_recovery_process (pid 5433) has died: fg  RCVR
+11-17 11:47:06.369 I/ActivityManager(  482): Start proc 5451:com.google.android.apps.maps:server_recovery_process/u0a139 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-17 11:47:06.405 I/ActivityManager(  482): Process com.google.android.apps.maps:server_recovery_process (pid 5451) has died: fg  RCVR
+11-17 11:47:06.453 I/ActivityManager(  482): Start proc 5468:com.google.android.apps.maps:server_recovery_process/u0a139 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-17 11:47:06.505 I/ActivityManager(  482): Process com.google.android.apps.maps:server_recovery_process (pid 5468) has died: fg  RCVR
+11-17 11:47:06.521 I/ActivityManager(  482): Start proc 5487:com.google.android.apps.maps:server_recovery_process/u0a139 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-17 11:47:06.571 I/ActivityManager(  482): Process com.google.android.apps.maps:server_recovery_process (pid 5487) has died: fg  RCVR
+11-17 11:47:06.578 I/ActivityManager(  482): Start proc 5504:com.google.android.apps.maps:server_recovery_process/u0a139 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-17 11:47:06.628 I/ActivityManager(  482): Process com.google.android.apps.maps:server_recovery_process (pid 5504) has died: fg  RCVR
+11-17 11:47:06.635 I/ActivityManager(  482): Start proc 5521:com.google.android.apps.maps:server_recovery_process/u0a139 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-17 11:47:06.670 I/ActivityManager(  482): Process com.google.android.apps.maps:server_recovery_process (pid 5521) has died: fg  RCVR
+11-17 11:47:06.684 I/ActivityManager(  482): Start proc 5538:com.google.android.apps.maps:server_recovery_process/u0a139 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-17 11:47:06.731 I/ActivityManager(  482): Process com.google.android.apps.maps:server_recovery_process (pid 5538) has died: fg  RCVR
+11-17 11:47:06.744 I/ActivityManager(  482): Start proc 5555:com.google.android.apps.maps:server_recovery_process/u0a139 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-17 11:47:06.803 I/ActivityManager(  482): Process com.google.android.apps.maps:server_recovery_process (pid 5555) has died: fg  RCVR
+11-17 11:47:06.825 I/ActivityManager(  482): Start proc 5572:com.google.android.apps.maps:server_recovery_process/u0a139 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-17 11:47:06.927 I/ActivityManager(  482): Process com.google.android.apps.maps:server_recovery_process (pid 5572) has died: fg  RCVR
+11-17 11:47:07.036 I/ActivityManager(  482): Start proc 5591:com.google.android.apps.maps:server_recovery_process/u0a139 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-17 11:47:07.204 I/ActivityManager(  482): Process com.google.android.apps.maps:server_recovery_process (pid 5591) has died: fg  RCVR
+11-17 11:47:07.220 I/ActivityManager(  482): Start proc 5609:com.google.android.apps.maps:server_recovery_process/u0a139 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-17 11:47:07.320 I/ActivityManager(  482): Process com.google.android.apps.maps:server_recovery_process (pid 5609) has died: fg  RCVR
+11-17 11:47:07.331 I/ActivityManager(  482): Start proc 5629:com.google.android.apps.maps:server_recovery_process/u0a139 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-17 11:47:07.389 I/ActivityManager(  482): Process com.google.android.apps.maps:server_recovery_process (pid 5629) has died: fg  RCVR
+11-17 11:47:10.146 I/ActivityManager(  482): Start proc 5686:com.google.android.webview/u0a124 for broadcast {com.google.android.webview/com.google.android.libraries.phenotype.client.stable.PhenotypeUpdateBackgroundBroadcastReceiver}
+11-17 11:47:11.521 I/ActivityManager(  482): Killing 4866:com.google.android.settings.intelligence/u0a107 (adj 0): change com.google.android.settings.intelligence
+11-17 11:47:11.524 W/ActivityManager(  482): Scheduling restart of crashed service com.google.android.settings.intelligence/.modules.appsearchindexing.impl.AppSearchIndexUpdateJobService in 1000ms for connection
+11-17 11:47:11.524 W/ActivityManager(  482): Scheduling restart of crashed service com.google.android.settings.intelligence/.modules.routines.impl.PruneDatabaseJobService in 11000ms for connection
+11-17 11:47:11.524 W/ActivityManager(  482): Scheduling restart of crashed service com.google.android.settings.intelligence/.modules.routines.impl.ComputeNewInferencesJobService in 20999ms for connection
+11-17 11:47:11.524 W/ActivityManager(  482): Scheduling restart of crashed service com.google.android.settings.intelligence/.modules.routines.impl.RoutinesJobIntentService in 30999ms for connection
+11-17 11:47:11.675 W/ActivityManager(  482): Rescheduling restart of crashed service com.google.android.settings.intelligence/.modules.appsearchindexing.impl.AppSearchIndexUpdateJobService in 19854ms for mem-pressure-event
+11-17 11:47:11.675 W/ActivityManager(  482): Rescheduling restart of crashed service com.google.android.settings.intelligence/.modules.routines.impl.PruneDatabaseJobService in 49854ms for mem-pressure-event
+11-17 11:47:11.675 W/ActivityManager(  482): Rescheduling restart of crashed service com.google.android.settings.intelligence/.modules.routines.impl.ComputeNewInferencesJobService in 79854ms for mem-pressure-event
+11-17 11:47:11.675 W/ActivityManager(  482): Rescheduling restart of crashed service com.google.android.settings.intelligence/.modules.routines.impl.RoutinesJobIntentService in 109854ms for mem-pressure-event
+11-17 11:47:12.046 I/ActivityManager(  482): Process com.android.keychain (pid 1793) has died: cch+99 CEM 
+11-17 11:47:12.052 W/ActivityManager(  482): Rescheduling restart of crashed service com.google.android.settings.intelligence/.modules.routines.impl.PruneDatabaseJobService in 29471ms for mem-pressure-event
+11-17 11:47:12.053 W/ActivityManager(  482): Rescheduling restart of crashed service com.google.android.settings.intelligence/.modules.routines.impl.RoutinesJobIntentService in 119471ms for mem-pressure-event
+11-17 11:47:12.143 W/ActivityManager(  482): Rescheduling restart of crashed service com.google.android.settings.intelligence/.modules.routines.impl.PruneDatabaseJobService in 9380ms for mem-pressure-event
+11-17 11:47:12.144 W/ActivityManager(  482): Rescheduling restart of crashed service com.google.android.settings.intelligence/.modules.routines.impl.ComputeNewInferencesJobService in 29380ms for mem-pressure-event
+11-17 11:47:12.144 W/ActivityManager(  482): Rescheduling restart of crashed service com.google.android.settings.intelligence/.modules.routines.impl.RoutinesJobIntentService in 49380ms for mem-pressure-event
+11-17 11:47:14.116 I/ActivityManager(  482): Start proc 5828:com.google.android.settings.intelligence/u0a107 for broadcast {com.google.android.settings.intelligence/com.google.android.settings.intelligence.modules.contextualcards.impl.JobBootBroadcastReceiver}
+11-17 11:47:14.811 W/ActivityManager(  482): Slow operation: 58ms so far, now at startProcess: returned from zygote!
+11-17 11:47:14.818 W/ActivityManager(  482): Slow operation: 65ms so far, now at startProcess: done updating battery stats
+11-17 11:47:14.818 W/ActivityManager(  482): Slow operation: 65ms so far, now at startProcess: building log message
+11-17 11:47:14.818 I/ActivityManager(  482): Start proc 5863:com.google.android.apps.maps:server_recovery_process/u0a139 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-17 11:47:14.818 W/ActivityManager(  482): Slow operation: 65ms so far, now at startProcess: starting to update pids map
+11-17 11:47:14.818 W/ActivityManager(  482): Slow operation: 65ms so far, now at startProcess: done updating pids map
+11-17 11:47:15.279 I/ActivityManager(  482): Process com.google.android.apps.maps:server_recovery_process (pid 5863) has died: fg  RCVR
+11-17 11:47:15.352 I/ActivityManager(  482): Start proc 5888:com.google.android.apps.maps:server_recovery_process/u0a139 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-17 11:47:15.680 I/ActivityManager(  482): Process com.google.android.apps.maps:server_recovery_process (pid 5888) has died: fg  RCVR
+11-17 11:47:16.092 W/ActivityManager(  482): Slow operation: 54ms so far, now at startProcess: returned from zygote!
+11-17 11:47:16.093 W/ActivityManager(  482): Slow operation: 55ms so far, now at startProcess: done updating battery stats
+11-17 11:47:16.093 W/ActivityManager(  482): Slow operation: 55ms so far, now at startProcess: building log message
+11-17 11:47:16.093 I/ActivityManager(  482): Start proc 5913:com.google.android.apps.maps:server_recovery_process/u0a139 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-17 11:47:16.093 W/ActivityManager(  482): Slow operation: 55ms so far, now at startProcess: starting to update pids map
+11-17 11:47:16.095 W/ActivityManager(  482): Slow operation: 56ms so far, now at startProcess: done updating pids map
+11-17 11:47:16.315 I/ActivityManager(  482): Process com.google.android.apps.maps:server_recovery_process (pid 5913) has died: fg  RCVR
+11-17 11:47:16.389 I/ActivityManager(  482): Start proc 5937:com.google.android.apps.maps:server_recovery_process/u0a139 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-17 11:47:16.639 I/ActivityManager(  482): Process com.google.android.apps.maps:server_recovery_process (pid 5937) has died: fg  RCVR
+11-17 11:47:16.656 I/ActivityManager(  482): Start proc 5956:com.google.android.apps.maps:server_recovery_process/u0a139 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-17 11:47:16.877 I/ActivityManager(  482): Force stopping dev.giorgi.silk appid=10174 user=0: from pid 5977
+11-17 11:47:16.887 I/ActivityManager(  482): Killing 3205:dev.giorgi.silk/u0a174 (adj 0): stop dev.giorgi.silk due to from pid 5977
+11-17 11:47:17.102 I/ActivityManager(  482): Process com.google.android.apps.maps:server_recovery_process (pid 5956) has died: fg  RCVR
+11-17 11:47:17.106 W/ActivityManager(  482): ProcessRecord{d05ff96 0:dev.giorgi.silk/u0a174} is attached to a previous process 3205
+11-17 11:47:17.112 W/ActivityManager(  482): setHasOverlayUi called on unknown pid: 3205
+11-17 11:47:17.112 W/ActivityManager(  482): ProcessRecord{d05ff96 0:dev.giorgi.silk/u0a174} is attached to a previous process 3205
+11-17 11:47:17.146 I/ActivityManager(  482): Start proc 5984:dev.giorgi.silk/u0a174 for top-activity {dev.giorgi.silk/dev.giorgi.silk.LauncherActivity}
+11-17 11:47:17.541 I/Silk    ( 5984): cache: 18 apps in 109 ms
+11-17 11:47:17.803 I/Silk    ( 5984): reload: 18 apps, 0 icons rendered, 260 ms
+11-17 11:47:17.958 I/Silk    ( 5984): wallpaper glass: ready
+11-17 11:47:19.376 I/ActivityManager(  482): Start proc 6030:com.google.android.apps.maps:server_recovery_process/u0a139 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-17 11:47:19.441 I/ActivityManager(  482): Process com.google.android.apps.maps:server_recovery_process (pid 6030) has died: fg  RCVR
+11-17 11:47:19.463 I/ActivityManager(  482): Start proc 6050:com.google.android.apps.maps:server_recovery_process/u0a139 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-17 11:47:19.528 I/ActivityManager(  482): Process com.google.android.apps.maps:server_recovery_process (pid 6050) has died: fg  RCVR
+11-17 11:47:19.536 I/ActivityManager(  482): Start proc 6067:com.google.android.apps.maps:server_recovery_process/u0a139 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-17 11:47:19.592 I/ActivityManager(  482): Process com.google.android.apps.maps:server_recovery_process (pid 6067) has died: fg  RCVR
+11-17 11:47:19.598 I/ActivityManager(  482): Start proc 6085:com.google.android.apps.maps:server_recovery_process/u0a139 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
+11-17 11:47:19.636 I/ActivityManager(  482): Process com.google.android.apps.maps:server_recovery_process (pid 6085) has died: fg  RCVR
+11-17 11:47:19.643 I/ActivityManager(  482): Start proc 6105:com.google.android.apps.maps:server_recovery_process/u0a139 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.plugins.serverrecovery.PhenotypeServerRecoveryHandlerImpl}
