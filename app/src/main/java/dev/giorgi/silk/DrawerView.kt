@@ -44,19 +44,19 @@ class DrawerView(context: Context) : LinearLayout(context) {
         isClickable = true
         isFocusable = true
         isFocusableInTouchMode = true
-        setBackgroundColor(0xD9000000.toInt())
+        setBackgroundColor(0xE6121214.toInt())
 
-        search.hint = "Search"
+        search.hint = "App Library"
         search.setSingleLine(true)
         search.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
         search.imeOptions = EditorInfo.IME_ACTION_GO
         search.setTextColor(Color.WHITE)
         search.setHintTextColor(0xB3FFFFFF.toInt())
-        search.textSize = 16f
-        search.gravity = Gravity.CENTER_VERTICAL
+        search.textSize = 17f
+        search.gravity = Gravity.CENTER
         search.background = GradientDrawable().apply {
-            cornerRadius = context.dp(26).toFloat()
-            setColor(0x2EFFFFFF)
+            cornerRadius = context.dp(14).toFloat()
+            setColor(0x24FFFFFF)
         }
         search.setPadding(context.dp(22), 0, context.dp(22), 0)
         search.addTextChangedListener(object : TextWatcher {
@@ -73,7 +73,7 @@ class DrawerView(context: Context) : LinearLayout(context) {
                 false
             }
         }
-        val searchParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, context.dp(52))
+        val searchParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, context.dp(44))
         searchParams.setMargins(context.dp(20), context.dp(14), context.dp(20), context.dp(10))
         addView(search, searchParams)
 

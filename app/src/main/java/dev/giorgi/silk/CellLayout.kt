@@ -5,22 +5,31 @@ import android.view.View
 import android.view.ViewGroup
 
 /**
- * A fixed grid. Each child says which cell it lives in and is centred inside it.
- * Home pages and the dock are both CellLayouts (the dock has one row).
+ * A fixed grid. Icons sit centred in one cell; widgets span several cells
+ * and fill them (minus a small margin).
  */
 class CellLayout(context: Context, private val cols: Int, private val rows: Int) :
     ViewGroup(context) {
 
-    class CellParams(val cellX: Int, val cellY: Int) :
-        ViewGroup.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
-        )
+    class CellParams(
+        val cellX: Int,
+        val cellY: Int,
+        val spanX: Int = 1,
+        val spanY: Int = 1,
+        val fill: Boolean = false,
+    ) : ViewGroup.LayoutParams(
+        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
+    )
 
     private var cellW = 0
     private var cellH = 0
+    private val widgetMargin = context.dp(8)
 
-    fun addAt(child: View, cellX: Int, cellY: Int) {
-        addView(child, CellParams(cellX, cellY))
+    val cellWidth get() = cellW
+    val cellHeight get() = cellH
+
+    fun addAt(child: View, cellX: Int, cellY: Int, spanX: Int = 1, spanY: Int = 1, fill: Boolean = false) {
+        addView(child, CellParams(cellX, cellY, spanX, spanY, fill))
     }
 
     override fun checkLayoutParams(p: ViewGroup.LayoutParams?): Boolean = p is CellParams
@@ -30,9 +39,21 @@ class CellLayout(context: Context, private val cols: Int, private val rows: Int)
         val height = MeasureSpec.getSize(heightMeasureSpec)
         cellW = (width - paddingLeft - paddingRight) / cols
         cellH = (height - paddingTop - paddingBottom) / rows
-        val childW = MeasureSpec.makeMeasureSpec(cellW, MeasureSpec.EXACTLY)
-        val childH = MeasureSpec.makeMeasureSpec(cellH, MeasureSpec.AT_MOST)
-        for (i in 0 until childCount) getChildAt(i).measure(childW, childH)
+        for (i in 0 until childCount) {
+            val child = getChildAt(i)
+            val lp = child.layoutParams as CellParams
+            if (lp.fill) {
+                child.measure(
+                    MeasureSpec.makeMeasureSpec(cellW * lp.spanX - 2 * widgetMargin, MeasureSpec.EXACTLY),
+                    MeasureSpec.makeMeasureSpec(cellH * lp.spanY - 2 * widgetMargin, MeasureSpec.EXACTLY),
+                )
+            } else {
+                child.measure(
+                    MeasureSpec.makeMeasureSpec(cellW, MeasureSpec.EXACTLY),
+                    MeasureSpec.makeMeasureSpec(cellH, MeasureSpec.AT_MOST),
+                )
+            }
+        }
         setMeasuredDimension(width, height)
     }
 
@@ -41,8 +62,16 @@ class CellLayout(context: Context, private val cols: Int, private val rows: Int)
             val child = getChildAt(i)
             val lp = child.layoutParams as CellParams
             val left = paddingLeft + lp.cellX * cellW
-            val top = paddingTop + lp.cellY * cellH + (cellH - child.measuredHeight) / 2
-            child.layout(left, top, left + cellW, top + child.measuredHeight)
+            val top = paddingTop + lp.cellY * cellH
+            if (lp.fill) {
+                child.layout(
+                    left + widgetMargin, top + widgetMargin,
+                    left + widgetMargin + child.measuredWidth, top + widgetMargin + child.measuredHeight
+                )
+            } else {
+                val y = top + (cellH - child.measuredHeight) / 2
+                child.layout(left, y, left + cellW, y + child.measuredHeight)
+            }
         }
     }
 }

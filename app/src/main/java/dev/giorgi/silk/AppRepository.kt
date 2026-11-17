@@ -8,7 +8,10 @@ import android.content.pm.LauncherApps
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Rect
+import android.graphics.drawable.AdaptiveIconDrawable
+import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.os.Handler
 import android.os.Looper
@@ -58,7 +61,8 @@ class AppRepository(private val context: Context) {
     private val main = Handler(Looper.getMainLooper())
     private val iconPx = context.dp(Dimens.ICON_DP)
     private val iconDir = File(context.filesDir, "icons").apply { mkdirs() }
-    private val indexFile = File(context.filesDir, "apps_index.json")
+    // Bump the version whenever icon rendering changes, so old cached icons are dropped.
+    private val indexFile = File(context.filesDir, "apps_index_v2.json")
 
     var apps: List<AppInfo> = emptyList()
         private set
@@ -164,7 +168,7 @@ class AppRepository(private val context: Context) {
                             fresh += key
                             iconPool.submit(Callable {
                                 AppInfo(component, user, serial, label,
-                                    render(info.getBadgedIcon(0)), key, version)
+                                    render(info.getIcon(0), user), key, version)
                             })
                         }
                     }
@@ -228,15 +232,35 @@ class AppRepository(private val context: Context) {
     }
 
     /**
-     * Icons are drawn once into a bitmap. Adaptive icons are layered drawables
-     * and expensive to draw every frame; a bitmap is one GPU texture.
+     * Icons are drawn once into a bitmap, clipped to the iOS squircle.
+     * Adaptive icons are drawn full-bleed (their layers are 1.5x the visible
+     * size); old-style icons are centred on a white tile. Work-profile apps
+     * get their briefcase badge added on top afterwards.
      */
-    private fun render(drawable: Drawable): Bitmap {
+    private fun render(drawable: Drawable, user: UserHandle): Bitmap {
+        val size = iconPx.toFloat()
         val bitmap = Bitmap.createBitmap(iconPx, iconPx, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
-        drawable.setBounds(0, 0, iconPx, iconPx)
-        drawable.draw(canvas)
-        return bitmap
+        canvas.clipPath(Glass.squircle(size))
+        if (drawable is AdaptiveIconDrawable) {
+            val inset = (iconPx * 0.25f).toInt()
+            for (layer in listOf(drawable.background, drawable.foreground)) {
+                layer ?: continue
+                layer.setBounds(-inset, -inset, iconPx + inset, iconPx + inset)
+                layer.draw(canvas)
+            }
+        } else {
+            canvas.drawColor(Color.WHITE)
+            val pad = (iconPx * 0.14f).toInt()
+            drawable.setBounds(pad, pad, iconPx - pad, iconPx - pad)
+            drawable.draw(canvas)
+        }
+        if (user == Process.myUserHandle()) return bitmap
+        val badged = context.packageManager.getUserBadgedIcon(BitmapDrawable(context.resources, bitmap), user)
+        val out = Bitmap.createBitmap(iconPx, iconPx, Bitmap.Config.ARGB_8888)
+        badged.setBounds(0, 0, iconPx, iconPx)
+        badged.draw(Canvas(out))
+        return out
     }
 
     fun launch(app: AppInfo, source: View) {

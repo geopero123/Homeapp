@@ -4,15 +4,20 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.RectF
 import android.view.View
 import kotlin.math.abs
 
-/** Row of dots; the dot for the current page is brighter and follows the swipe. */
+/** iOS-style page dots on a small glass capsule; the current dot follows the swipe. */
 class PageIndicator(context: Context) : View(context) {
 
-    private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE }
-    private val radius = context.dp(3).toFloat()
-    private val gap = context.dp(14).toFloat()
+    private val dot = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE }
+    private val capsule = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0x2EFFFFFF }
+    private val radius = context.dpf(3.5f)
+    private val gap = context.dpf(15f)
+    private val padH = context.dpf(12f)
+    private val capsuleH = context.dpf(24f)
+    private val rect = RectF()
 
     var count = 1
         set(value) {
@@ -20,7 +25,6 @@ class PageIndicator(context: Context) : View(context) {
             invalidate()
         }
 
-    /** Page index plus swipe fraction, e.g. 1.5 is halfway between pages 1 and 2. */
     var position = 0f
         set(value) {
             field = value
@@ -29,12 +33,15 @@ class PageIndicator(context: Context) : View(context) {
 
     override fun onDraw(canvas: Canvas) {
         if (count <= 1) return
-        val startX = width / 2f - gap * (count - 1) / 2f
+        val dotsW = gap * (count - 1)
         val cy = height / 2f
+        rect.set(width / 2f - dotsW / 2 - padH, cy - capsuleH / 2, width / 2f + dotsW / 2 + padH, cy + capsuleH / 2)
+        canvas.drawRoundRect(rect, capsuleH / 2, capsuleH / 2, capsule)
+        val startX = width / 2f - dotsW / 2f
         for (i in 0 until count) {
             val closeness = (1f - abs(position - i)).coerceIn(0f, 1f)
-            paint.alpha = (90 + 165 * closeness).toInt()
-            canvas.drawCircle(startX + i * gap, cy, radius * (1f + 0.3f * closeness), paint)
+            dot.alpha = (100 + 155 * closeness).toInt()
+            canvas.drawCircle(startX + i * gap, cy, radius, dot)
         }
     }
 }

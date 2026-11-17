@@ -6,6 +6,7 @@ mkdir -p shots
 shot() { sleep "${2:-1}"; adb exec-out screencap -p > "shots/$1.png"; }
 
 adb install -r Silk.apk
+adb shell cmd role add-role-holder --user 0 android.app.role.HOME dev.giorgi.silk 0
 adb shell cmd package set-home-activity dev.giorgi.silk/.LauncherActivity
 adb logcat -c
 adb shell input keyevent KEYCODE_HOME
@@ -27,17 +28,17 @@ adb shell input keyevent KEYCODE_BACK
 adb shell input keyevent KEYCODE_BACK
 shot 06-back-home 2
 
-# Open and close the drawer a few times to collect frame statistics.
-for i in 1 2 3 4 5; do
-  adb shell input swipe 540 1900 540 700 200; sleep 1
-  adb shell input swipe 540 700 540 1900 200; sleep 1
-done
-adb shell dumpsys gfxinfo dev.giorgi.silk > shots/gfxinfo.txt
+# Swipe to home page 2.
+adb shell input swipe 950 1200 100 1200 200
+shot 06b-home-page2 1.5
+adb shell input swipe 100 1200 950 1200 200
+sleep 1
 
 # Long-press on empty home space.
-adb shell input swipe 540 1100 540 1100 1000
+adb shell input swipe 540 1640 540 1640 1000
 shot 07-home-menu 1.5
 adb shell input keyevent KEYCODE_BACK
+sleep 1
 
 # Swipe down on home: notification shade.
 adb shell input swipe 540 900 540 1700 200

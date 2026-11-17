@@ -2,6 +2,7 @@ package dev.giorgi.silk
 
 import android.content.Context
 import android.graphics.Color
+import android.graphics.Typeface
 import android.graphics.drawable.BitmapDrawable
 import android.text.TextUtils
 import android.util.TypedValue
@@ -19,13 +20,13 @@ class IconView(context: Context) : TextView(context) {
     init {
         gravity = Gravity.CENTER_HORIZONTAL
         setTextColor(Color.WHITE)
-        setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, 11.5f)
+        typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
         maxLines = 1
         ellipsize = TextUtils.TruncateAt.END
-        // Soft shadow keeps labels readable on bright wallpapers.
-        setShadowLayer(6f, 0f, 2f, 0x99000000.toInt())
-        compoundDrawablePadding = context.dp(6)
-        setPadding(context.dp(4), context.dp(8), context.dp(4), context.dp(8))
+        setShadowLayer(5f, 0f, 1f, 0x80000000.toInt())
+        compoundDrawablePadding = context.dp(5)
+        setPadding(context.dp(2), context.dp(4), context.dp(2), context.dp(4))
     }
 
     fun bind(app: AppInfo, showLabel: Boolean = true) {
