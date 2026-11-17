@@ -20,6 +20,7 @@ class IconView(context: Context) : TextView(context) {
 
     init {
         gravity = Gravity.CENTER_HORIZONTAL
+        defaultFocusHighlightEnabled = false
         setTextColor(Color.WHITE)
         setTextSize(TypedValue.COMPLEX_UNIT_SP, 11.5f)
         typeface = LABEL_FACE

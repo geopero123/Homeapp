@@ -25,6 +25,12 @@ class CellLayout(context: Context, private val cols: Int, private val rows: Int)
     private var cellH = 0
     private val widgetMargin = context.dp(8)
 
+    init {
+        // After a key press (e.g. Back) Android leaves touch mode and paints a grey
+        // "focused" highlight over the whole page. A launcher page never wants that.
+        defaultFocusHighlightEnabled = false
+    }
+
     fun addAt(child: View, cellX: Int, cellY: Int, spanX: Int = 1, spanY: Int = 1, fill: Boolean = false) {
         addView(child, CellParams(cellX, cellY, spanX, spanY, fill))
     }

@@ -43,6 +43,10 @@ class WidgetFrame(context: Context) : FrameLayout(context) {
     private var fired = false
     private var pressed = false
 
+    init {
+        defaultFocusHighlightEnabled = false
+    }
+
     private val pressIn = Runnable {
         pressed = true
         Motion.scale(this, 0.96f, 900f, 1f)
