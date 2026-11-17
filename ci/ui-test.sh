@@ -9,6 +9,7 @@ adb install -r Silk.apk
 adb shell cmd role add-role-holder --user 0 android.app.role.HOME dev.giorgi.silk 0
 adb shell cmd package set-home-activity dev.giorgi.silk/.LauncherActivity
 adb shell pm grant dev.giorgi.silk android.permission.READ_MEDIA_IMAGES
+adb shell appops set --uid dev.giorgi.silk MANAGE_EXTERNAL_STORAGE allow
 adb logcat -c
 adb shell input keyevent KEYCODE_HOME
 shot 01-home-first-start 10
@@ -18,6 +19,11 @@ adb shell dumpsys gfxinfo dev.giorgi.silk reset > /dev/null
 adb shell input swipe 540 1900 540 700 200
 shot 02-drawer-0.3s 0.3
 shot 03-drawer-settled 2
+# Close and reopen without touching search, to separate drawer effects from keyboard effects.
+adb shell input swipe 540 700 540 1900 200
+shot 03b-closed-no-search 2
+adb shell input swipe 540 1900 540 700 200
+sleep 2
 
 adb shell input swipe 950 1300 100 1300 200
 shot 04-drawer-page2 1.5
