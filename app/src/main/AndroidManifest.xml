@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Lets us fire the system "Uninstall?" dialog from the long-press menu. -->
+    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
+
+    <!-- Android 11+ package visibility. LauncherApps already returns every
+         launchable app; these entries are for resolving the default dialer,
+         SMS, browser and camera apps when the dock is seeded on first run. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.DIAL" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.SENDTO" />
+            <data android:scheme="smsto" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="https" />
+        </intent>
+        <intent>
+            <action android:name="android.media.action.IMAGE_CAPTURE" />
+        </intent>
+    </queries>
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="Silk"
+        android:supportsRtl="true"
+        android:theme="@style/SilkHome">
+
+        <!--
+            What makes this app a launcher is the intent filter:
+              MAIN + HOME + DEFAULT  -> appears under "Default home app"
+            There is deliberately no LAUNCHER category, so Silk does not list
+            itself in its own drawer.
+
+            singleTask            one instance, Home button always returns to it
+            clearTaskOnLaunch     nothing may stay stacked on top of the home screen
+            stateNotNeeded        the system may restart us without saved state
+            excludeFromRecents    a launcher must not show up as a recents card
+            adjustResize          with edge-to-edge this only reports keyboard
+                                  insets to us; the window itself is not resized
+        -->
+        <activity
+            android:name=".LauncherActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:clearTaskOnLaunch="true"
+            android:stateNotNeeded="true"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:screenOrientation="nosensor"
+            android:resizeableActivity="true"
+            android:configChanges="keyboard|keyboardHidden|navigation|uiMode"
+            android:windowSoftInputMode="adjustResize|stateAlwaysHidden">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
