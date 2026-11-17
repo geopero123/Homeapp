@@ -5,7 +5,6 @@ import android.appwidget.AppWidgetHost
 import android.appwidget.AppWidgetHostView
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProviderInfo
-import android.Manifest
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -70,18 +69,8 @@ class LauncherActivity : ComponentActivity() {
         }
     }
 
-    private val photoPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) {
-        WallpaperSource.reload(this) {
-            if (!WallpaperSource.available) pickPhoto()
-        }
-    }
-
-    /** Android widget views, kept so a page rebind doesn't recreate them. */
-    private val widgetViews = HashMap<Int, AppWidgetHostView>()
-
-    /** The Android widget being added while the bind/configure screens are open. */
-    private var pendingWidgetId = -1
-    private var pendingWidgetInfo: AppWidgetProviderInfo? = null
+    /** Set while the "All files access" settings screen is open; re-read the wallpaper on return. */
+    private var awaitingFileAccess = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -139,6 +128,12 @@ class LauncherActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        if (awaitingFileAccess) {
+            awaitingFileAccess = false
+            WallpaperSource.reload(this) {
+                if (!WallpaperSource.available) toast("Still can't read the wallpaper. Try \"Choose a photo\".")
+            }
+        }
         if (launchedApp) {
             launchedApp = false
             // iOS-style return: the home screen settles back from slightly zoomed in.
@@ -325,11 +320,26 @@ class LauncherActivity : ComponentActivity() {
             menu.show(
                 null, "Liquid Glass needs to see your wallpaper",
                 listOf(
-                    "Allow photo access" to { photoPermission.launch(Manifest.permission.READ_MEDIA_IMAGES) },
+                    "Use my current wallpaper" to { requestFileAccess() },
                     "Choose a wallpaper photo" to { pickPhoto() },
                     "Not now" to {},
                 )
             )
+        }
+    }
+
+    /**
+     * Android 13 only lets apps read the wallpaper image with "All files
+     * access". It's optional: picking a photo inside Silk works without it.
+     */
+    private fun requestFileAccess() {
+        awaitingFileAccess = true
+        try {
+            startActivity(
+                Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.parse("package:$packageName"))
+            )
+        } catch (e: Exception) {
+            startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
         }
     }
 
@@ -338,7 +348,7 @@ class LauncherActivity : ComponentActivity() {
             null, "Wallpaper",
             listOf(
                 "Choose a photo" to { pickPhoto() },
-                "Allow photo access" to { photoPermission.launch(Manifest.permission.READ_MEDIA_IMAGES) },
+                "Use my current wallpaper" to { requestFileAccess() },
                 "System wallpaper settings" to {
                     startActivity(Intent.createChooser(Intent(Intent.ACTION_SET_WALLPAPER), "Wallpaper"))
                 },
